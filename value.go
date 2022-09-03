@@ -18,147 +18,7 @@ const (
 	ValidationError errors.Kind = "validation error"
 )
 
-// Value is a textual representation of a value which is able to cast itself to
-// any of the supported types using its corresponding method.
-//
-//	boolVal, err := parseval.Value("true").Bool()
-type Value string
-
-// Empty indicates if Value is an empty string.
-func (v Value) Empty() bool { return string(v) == "" }
-
-func (v Value) GoString() string { return `parseval.Value("` + string(v) + `")` }
-
-// String returns Value as a raw string.
-func (v Value) String() string { return string(v) }
-
-// Bool tries to parse Value as a bool with strconv.ParseBool.
-// It accepts 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False.
-// Any other value returns an error.
-func (v Value) Bool() (bool, error) {
-	x, err := strconv.ParseBool(string(v))
-	return x, errors.WithKind(err, errKind(err))
-}
-
-// Int tries to parse Value as an int with strconv.ParseInt.
-func (v Value) Int() (int, error) {
-	x, err := intSize(v, strconv.IntSize)
-	return int(x), err
-}
-
-// Int8 tries to parse Value as an int8 with strconv.ParseInt.
-func (v Value) Int8() (int8, error) {
-	x, err := intSize(v, 8)
-	return int8(x), err
-}
-
-// Int16 tries to parse Value as an int16 with strconv.ParseInt.
-func (v Value) Int16() (int16, error) {
-	x, err := intSize(v, 16)
-	return int16(x), err
-}
-
-// Int32 tries to parse Value as an int32 with strconv.ParseInt.
-func (v Value) Int32() (int32, error) {
-	x, err := intSize(v, 32)
-	return int32(x), err
-}
-
-// Int64 tries to parse Value as an int64 with strconv.ParseInt.
-func (v Value) Int64() (int64, error) {
-	return intSize(v, 64)
-}
-
-// Uint tries to parse Value as an uint with strconv.ParseUint.
-func (v Value) Uint() (uint, error) {
-	x, err := uintSize(v, strconv.IntSize)
-	return uint(x), err
-}
-
-// Uint8 tries to parse Value as an uint8 with strconv.ParseUint.
-func (v Value) Uint8() (uint8, error) {
-	x, err := uintSize(v, 8)
-	return uint8(x), err
-}
-
-// Uint16 tries to parse Value as an uint16 with strconv.ParseUint.
-func (v Value) Uint16() (uint16, error) {
-	x, err := uintSize(v, 16)
-	return uint16(x), err
-}
-
-// Uint32 tries to parse Value as an uint32 with strconv.ParseUint.
-func (v Value) Uint32() (uint32, error) {
-	x, err := uintSize(v, 32)
-	return uint32(x), err
-}
-
-// Uint64 tries to parse Value as an uint64 with strconv.ParseUint.
-func (v Value) Uint64() (uint64, error) {
-	return uintSize(v, 64)
-}
-
-// Float32 tries to parse Value as a float32 with strconv.ParseFloat.
-func (v Value) Float32() (float32, error) {
-	x, err := floatSize(v, 32)
-	return float32(x), err
-}
-
-// Float64 tries to parse Value as a float64 with strconv.ParseFloat.
-func (v Value) Float64() (float64, error) {
-	return floatSize(v, 64)
-}
-
-// Complex64 tries to parse Value as a complex64 with strconv.ParseComplex.
-func (v Value) Complex64() (complex64, error) {
-	x, err := complexSize(v, 64)
-	return complex64(x), err
-}
-
-// Complex128 tries to parse Value as a complex128 with strconv.ParseComplex.
-func (v Value) Complex128() (complex128, error) {
-	return complexSize(v, 128)
-}
-
-// Duration tries to parse Value as time.Duration with time.ParseDuration.
-func (v Value) Duration() (time.Duration, error) {
-	x, err := time.ParseDuration(string(v))
-	return x, errors.WithKind(err, ParseError)
-}
-
-// Url tries to parse Value as an url.Url with url.ParseRequestURI.
-func (v Value) Url() (*url.URL, error) {
-	x, err := url.ParseRequestURI(string(v))
-	if err != nil {
-		err = errors.WithKind(err, ParseError)
-	}
-	return x, err
-}
-
-func (v Value) UnmarshalText(u encoding.TextUnmarshaler) error {
-	err := u.UnmarshalText([]byte(v))
-	return errors.WithKind(err, errKind(err))
-}
-
-func intSize(v Value, bitSize int) (int64, error) {
-	x, err := strconv.ParseInt(string(v), 0, bitSize)
-	return x, errors.WithKind(err, errKind(err))
-}
-
-func uintSize(v Value, bitSize int) (uint64, error) {
-	x, err := strconv.ParseUint(string(v), 0, bitSize)
-	return x, errors.WithKind(err, errKind(err))
-}
-
-func floatSize(v Value, bitSize int) (float64, error) {
-	x, err := strconv.ParseFloat(string(v), bitSize)
-	return x, errors.WithKind(err, errKind(err))
-}
-
-func complexSize(v Value, bitSize int) (complex128, error) {
-	x, err := strconv.ParseComplex(string(v), bitSize)
-	return x, errors.WithKind(err, errKind(err))
-}
+var Separator string = ","
 
 func errKind(err error) errors.Kind {
 	if ne, ok := err.(*strconv.NumError); ok {
@@ -169,4 +29,121 @@ func errKind(err error) errors.Kind {
 		}
 	}
 	return errors.UnknownKind
+}
+
+// Value is a textual representation of a value which is able to cast itself to
+// any of the supported types using its corresponding method.
+//
+//	boolVal, err := parseval.Value("true").Bool()
+type Value string
+
+// Empty indicates if Value is an empty string.
+func (v Value) Empty() bool { return v.String() == "" }
+
+func (v Value) GoString() string { return `parseval.Value("` + v.String() + `")` }
+
+// String returns Value as a raw string.
+func (v Value) String() string { return string(v) }
+
+// StringVar sets the value p points to, to Value as raw string.
+func (v Value) StringVar(p *string) { *p = v.String() }
+
+// Bytes returns Value as raw bytes.
+func (v Value) Bytes() []byte { return []byte(v) }
+
+// BytesVar sets the value p points to, to Value as raw bytes.
+func (v Value) BytesVar(p *[]byte) { *p = v.Bytes() }
+
+// Duration tries to parse Value as time.Duration with time.ParseDuration.
+func (v Value) Duration() (time.Duration, error) {
+	x, err := time.ParseDuration(v.String())
+	return x, errors.WithKind(err, ParseError)
+}
+
+// DurationVar sets the value p points to using Duration.
+func (v Value) DurationVar(p *time.Duration) (err error) {
+	*p, err = v.Duration()
+	return
+}
+
+// Url tries to parse Value as an url.Url with url.ParseRequestURI.
+func (v Value) Url() (*url.URL, error) {
+	x, err := url.ParseRequestURI(v.String())
+	if err != nil {
+		err = errors.WithKind(err, ParseError)
+	}
+	return x, err
+}
+
+// UrlVar sets the value p points to using Url.
+func (v Value) UrlVar(p **url.URL) (err error) {
+	*p, err = v.Url()
+	return
+}
+
+// UnmarshalTextWith uses encoding.TextUnmarshaler u to unmarshal v.
+func (v Value) UnmarshalTextWith(u encoding.TextUnmarshaler) error {
+	err := u.UnmarshalText(v.Bytes())
+	return errors.WithKind(err, errKind(err))
+}
+
+func (v Value) unmarshal(i interface{}) (bool, error) {
+	if u, ok := i.(encoding.TextUnmarshaler); ok {
+		// let TextUnmarshaler decide what to do with possible empty v
+		return true, v.UnmarshalTextWith(u)
+	}
+	if v.Empty() {
+		return true, nil
+	}
+
+	switch p := i.(type) {
+	case *string:
+		v.StringVar(p)
+		return true, nil
+	case *[]byte:
+		v.BytesVar(p)
+		return true, nil
+
+	case *bool:
+		return true, v.BoolVar(p)
+
+	case *int:
+		return true, v.IntVar(p)
+	case *int8:
+		return true, v.Int8Var(p)
+	case *int16:
+		return true, v.Int16Var(p)
+	case *int32:
+		return true, v.Int32Var(p)
+	case *int64:
+		return true, v.Int64Var(p)
+
+	case *uint:
+		return true, v.UintVar(p)
+	case *uint8:
+		return true, v.Uint8Var(p)
+	case *uint16:
+		return true, v.Uint16Var(p)
+	case *uint32:
+		return true, v.Uint32Var(p)
+	case *uint64:
+		return true, v.Uint64Var(p)
+
+	case *float32:
+		return true, v.Float32Var(p)
+	case *float64:
+		return true, v.Float64Var(p)
+
+	case *complex64:
+		return true, v.Complex64Var(p)
+	case *complex128:
+		return true, v.Complex128Var(p)
+
+	case *time.Duration:
+		return true, v.DurationVar(p)
+	case *url.URL:
+		return true, v.UrlVar(&p)
+	}
+
+	return false, nil
 }
