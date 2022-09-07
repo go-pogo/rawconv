@@ -18,7 +18,7 @@ const (
 	ValidationError errors.Kind = "validation error"
 )
 
-var Separator string = ","
+var Separator = ","
 
 func errKind(err error) errors.Kind {
 	if ne, ok := err.(*strconv.NumError); ok {
