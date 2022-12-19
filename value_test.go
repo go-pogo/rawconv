@@ -208,24 +208,6 @@ func TestValue(t *testing.T) {
 				return v, err
 			},
 		},
-		//"Duration": {
-		//	func(s string) (interface{}, error) { return time.ParseDuration(s) },
-		//	func(s string) (interface{}, error) { return Value(s).Duration() },
-		//	func(s string) (interface{}, error) {
-		//		var v time.Duration
-		//		err := Value(s).DurationVar(&v)
-		//		return v, err
-		//	},
-		//},
-		//"Url": {
-		//	func(s string) (interface{}, error) { return url.ParseRequestURI(s) },
-		//	func(s string) (interface{}, error) { return Value(s).Url() },
-		//	func(s string) (interface{}, error) {
-		//		var v *url.URL
-		//		err := Value(s).UrlVar(&v)
-		//		return v, err
-		//	},
-		//},
 	}
 
 	run := func(t *testing.T, prepWantFn, prepHaveFn prepareFunc) {
