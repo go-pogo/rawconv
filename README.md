@@ -11,7 +11,7 @@ parseval
 
 [build-status-img]: https://github.com/go-pogo/parseval/workflows/Test/badge.svg
 
-[build-status-url]: https://github.com/go-pogo/parseval/actions?query=workflow%3ATest
+[build-status-url]: https://github.com/go-pogo/parseval/actions/workflows/test.yml
 
 [report-img]: https://goreportcard.com/badge/github.com/go-pogo/parseval
 
