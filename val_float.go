@@ -10,7 +10,7 @@ import (
 	"github.com/go-pogo/errors"
 )
 
-// Float32 tries to parse Value as a float32 with strconv.ParseFloat.
+// Float32 tries to parseTyp Value as a float32 with strconv.ParseFloat.
 func (v Value) Float32() (float32, error) {
 	x, err := floatSize(v, 32)
 	return float32(x), err
@@ -22,7 +22,7 @@ func (v Value) Float32Var(p *float32) (err error) {
 	return
 }
 
-// Float64 tries to parse Value as a float64 with strconv.ParseFloat.
+// Float64 tries to parseTyp Value as a float64 with strconv.ParseFloat.
 func (v Value) Float64() (float64, error) {
 	return floatSize(v, 64)
 }

@@ -13,116 +13,191 @@ import (
 	"github.com/go-pogo/errors"
 )
 
-const ErrPointerExpected errors.Msg = "expected a pointer to a value"
+const (
+	ErrPointerExpected errors.Msg = "expected a pointer to a value"
+	ErrUnableToAddr    errors.Msg = "unable to addr value"
 
-var parser = new(Parser)
+	ParserError errors.Kind = "parser error"
 
-// Unmarshal Value v to any of the supported types.
-func Unmarshal(v Value, i interface{}) error {
-	if ok, err := v.unmarshal(i); ok || err != nil {
-		return err
-	}
-	if reflect.TypeOf(i).Kind() != reflect.Ptr {
+	panicUnsupportedKind = "unsupported kind"
+)
+
+var (
+	dp = NewDefaultParser()
+
+	// types used by default parser
+	textUnmarshalerType   = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	binaryUnmarshalerType = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
+	timeDurationType      = reflect.TypeOf(time.Nanosecond)
+	urlType               = reflect.TypeOf(url.URL{})
+)
+
+// Unmarshal Value val to any of the supported types.
+func Unmarshal(val Value, v interface{}) error {
+	if reflect.TypeOf(v).Kind() != reflect.Ptr {
 		return errors.New(ErrPointerExpected)
 	}
 
-	return parser.Parse(v, reflect.ValueOf(i))
+	return dp.Parse(val, reflect.ValueOf(v))
 }
 
 // Parse Value v to any of the supported types and set its value to
 // reflect.Value rval.
-func Parse(v Value, rval reflect.Value) error { return parser.Parse(v, rval) }
+func Parse(val Value, dest reflect.Value) error { return dp.Parse(val, dest) }
 
 type Parser struct {
-	typ reflect.Type
-	cp  func(Value, interface{}) error
+	types map[reflect.Kind]map[reflect.Type]int
+	funcs []ParseFunc
 }
 
-func NewParser(rtyp reflect.Type, fn func(v Value, i interface{}) error) *Parser {
+func NewParser() *Parser {
 	return &Parser{
-		typ: rtyp,
-		cp:  fn,
+		types: make(map[reflect.Kind]map[reflect.Type]int, 4),
+		funcs: make([]ParseFunc, 0, 2),
 	}
 }
 
-var (
-	textUnmarshalerType = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-	timeDurationType    = reflect.TypeOf(time.Nanosecond)
-	urlUrlType          = reflect.TypeOf(url.URL{})
-)
+func NewDefaultParser() *Parser {
+	p := NewParser()
 
-// Parse Value v and set it to val.
-func (p *Parser) Parse(v Value, rval reflect.Value) error {
-	rtyp := rval.Type()
-	if p.typ != nil && rtyp == p.typ {
-		return p.cp(v, rval.Interface())
+	// common types
+	p.Register(timeDurationType, func(val Value, dest interface{}) (err error) {
+		*dest.(*time.Duration), err = time.ParseDuration(val.String())
+		return
+	})
+	p.Register(urlType, func(val Value, dest interface{}) error {
+		u, err := url.ParseRequestURI(val.String())
+		*dest.(*url.URL) = *u
+		return err
+	})
+
+	// interfaces
+	p.Register(textUnmarshalerType, func(val Value, dest interface{}) error {
+		return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
+	})
+	p.Register(binaryUnmarshalerType, func(val Value, dest interface{}) error {
+		return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
+	})
+	return p
+}
+
+type ParseFunc func(val Value, dest interface{}) error
+
+func Register(typ reflect.Type, fn ParseFunc) { dp.Register(typ, fn) }
+
+func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
+	k := typ.Kind()
+	if k == reflect.Invalid ||
+		k == reflect.Uintptr ||
+		k == reflect.Chan ||
+		k == reflect.Func ||
+		k == reflect.UnsafePointer ||
+		// not yet supported
+		k == reflect.Array || k == reflect.Map || k == reflect.Slice {
+		panic(panicUnsupportedKind)
 	}
 
-	// for rval.Kind() == reflect.Ptr {
-	// 	rval = rval.Elem()
-	// }
-
-	rtyp = rval.Type()
-	if rtyp.Implements(textUnmarshalerType) {
-		// let TextUnmarshaler decide what to do with possible empty v
-		return v.UnmarshalTextWith(rval.Interface().(encoding.TextUnmarshaler))
-	}
-	if v.Empty() {
-		return nil
+	if _, ok := p.types[k]; !ok {
+		p.types[k] = map[reflect.Type]int{typ: len(p.funcs)}
+	} else {
+		p.types[k][typ] = len(p.funcs)
 	}
 
-	// handle known types
-	switch rtyp {
-	case timeDurationType:
-		if x, err := v.Duration(); err != nil {
-			return err
-		} else {
-			rval.Set(reflect.ValueOf(x))
-			return nil
+	p.funcs = append(p.funcs, fn)
+	return p
+}
+
+func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
+	if kind, ok := p.types[typ.Kind()]; ok {
+		if i, ok := kind[typ]; ok {
+			return p.mustFunc(i), ok
 		}
+	}
+	return nil, false
+}
 
-	case urlUrlType:
-		if x, err := v.Url(); err != nil {
-			return err
-		} else {
-			rval.Set(reflect.ValueOf(x))
-			return nil
+func (p *Parser) mustFunc(i int) ParseFunc {
+	if i >= len(p.funcs) {
+		panic("func should exist!")
+	}
+	return p.funcs[i]
+}
+
+// Parse Value v and set it to dest.
+func (p *Parser) Parse(v Value, dest reflect.Value) error {
+	// try exact type match
+	if parseFn, ok := p.Func(dest.Type()); ok {
+		return p.parse(v, dest, parseFn)
+	}
+
+	rv := dest
+	for rv.Kind() == reflect.Ptr {
+		// create a pointer to the type rval points to
+		ptr := reflect.New(rv.Type().Elem())
+		rv.Set(ptr)
+
+		// take the value where the pointer points to and try parsing again...
+		rv = ptr.Elem()
+		if parseFn, ok := p.Func(rv.Type()); ok {
+			return p.parse(v, rv, parseFn)
+		}
+	}
+
+	// try interface implementations
+	if rv, err := addr(rv); err != nil {
+		return err
+	} else {
+		rt := rv.Type()
+		for typ, i := range p.types[reflect.Interface] {
+			if !rt.Implements(typ) {
+				continue
+			}
+
+			if parseErr := p.parse(v, rv, p.mustFunc(i)); parseErr != nil {
+				errors.Append(&err, parseErr)
+			} else {
+				return nil
+			}
 		}
 	}
 
 	// handle aliases of primitive types
-	switch rval.Kind() {
+	if v.Empty() {
+		return nil
+	}
+
+	switch rv.Kind() {
 	case reflect.String:
-		rval.SetString(v.String())
+		rv.SetString(v.String())
 		return nil
 
 	case reflect.Bool:
 		x, err := v.Bool()
-		rval.SetBool(x)
+		rv.SetBool(x)
 		return err
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		x, err := intSize(v, rval.Type().Bits())
-		rval.SetInt(x)
+		x, err := intSize(v, rv.Type().Bits())
+		rv.SetInt(x)
 		return err
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		x, err := uintSize(v, rval.Type().Bits())
-		rval.SetUint(x)
+		x, err := uintSize(v, rv.Type().Bits())
+		rv.SetUint(x)
 		return err
 
 	case reflect.Float32, reflect.Float64:
-		x, err := floatSize(v, rval.Type().Bits())
-		rval.SetFloat(x)
+		x, err := floatSize(v, rv.Type().Bits())
+		rv.SetFloat(x)
 		return err
 
 	case reflect.Complex64, reflect.Complex128:
-		x, err := complexSize(v, rval.Type().Bits())
-		rval.SetComplex(x)
+		x, err := complexSize(v, rv.Type().Bits())
+		rv.SetComplex(x)
 		return err
 	}
 
-	return errors.WithStack(&UnsupportedTypeError{Type: rtyp})
+	return errors.WithStack(&UnsupportedTypeError{Type: dest.Type()})
 }
 
 type UnsupportedTypeError struct {
@@ -131,4 +206,31 @@ type UnsupportedTypeError struct {
 
 func (e *UnsupportedTypeError) Error() string {
 	return "type `" + e.Type.String() + "` is not supported"
+}
+
+func (p *Parser) parse(v Value, rv reflect.Value, parseFn ParseFunc) error {
+	rv, err := addr(rv)
+	if err != nil {
+		return errors.WithKind(err, ParserError)
+	}
+
+	dest := rv.Interface()
+	if err = parseFn(v, dest); err != nil {
+		if errors.GetKind(err) == errors.UnknownKind {
+			return errors.WithKind(err, ParseError)
+		} else {
+			return err
+		}
+	}
+	return nil
+}
+
+func addr(rv reflect.Value) (reflect.Value, error) {
+	if rv.Kind() == reflect.Ptr {
+		return rv, nil
+	}
+	if !rv.CanAddr() {
+		return rv, errors.New(ErrUnableToAddr)
+	}
+	return rv.Addr(), nil
 }

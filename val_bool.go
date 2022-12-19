@@ -10,7 +10,7 @@ import (
 	"github.com/go-pogo/errors"
 )
 
-// Bool tries to parse Value as a bool with strconv.ParseBool.
+// Bool tries to parseTyp Value as a bool with strconv.ParseBool.
 // It accepts 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False.
 // Any other value returns an error.
 func (v Value) Bool() (bool, error) {

@@ -10,7 +10,7 @@ import (
 	"github.com/go-pogo/errors"
 )
 
-// Uint tries to parse Value as an uint with strconv.ParseUint
+// Uint tries to parseTyp Value as an uint with strconv.ParseUint
 func (v Value) Uint() (uint, error) {
 	x, err := uintSize(v, strconv.IntSize)
 	return uint(x), err
@@ -22,7 +22,7 @@ func (v Value) UintVar(p *uint) (err error) {
 	return
 }
 
-// Uint8 tries to parse Value as an uint8 with strconv.ParseUint.
+// Uint8 tries to parseTyp Value as an uint8 with strconv.ParseUint.
 func (v Value) Uint8() (uint8, error) {
 	x, err := uintSize(v, 8)
 	return uint8(x), err
@@ -34,7 +34,7 @@ func (v Value) Uint8Var(p *uint8) (err error) {
 	return
 }
 
-// Uint16 tries to parse Value as an uint16 with strconv.ParseUint.
+// Uint16 tries to parseTyp Value as an uint16 with strconv.ParseUint.
 func (v Value) Uint16() (uint16, error) {
 	x, err := uintSize(v, 16)
 	return uint16(x), err
@@ -46,7 +46,7 @@ func (v Value) Uint16Var(p *uint16) (err error) {
 	return
 }
 
-// Uint32 tries to parse Value as an uint32 with strconv.ParseUint.
+// Uint32 tries to parseTyp Value as an uint32 with strconv.ParseUint.
 func (v Value) Uint32() (uint32, error) {
 	x, err := uintSize(v, 32)
 	return uint32(x), err
@@ -58,7 +58,7 @@ func (v Value) Uint32Var(p *uint32) (err error) {
 	return
 }
 
-// Uint64 tries to parse Value as an uint64 with strconv.ParseUint.
+// Uint64 tries to parseTyp Value as an uint64 with strconv.ParseUint.
 func (v Value) Uint64() (uint64, error) {
 	return uintSize(v, 64)
 }

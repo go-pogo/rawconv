@@ -5,14 +5,10 @@
 package parseval
 
 import (
-	"net"
-	"net/url"
-	"strconv"
-	"testing"
-	"time"
-
 	"github.com/go-pogo/errors"
 	"github.com/stretchr/testify/assert"
+	"strconv"
+	"testing"
 )
 
 func TestValue(t *testing.T) {
@@ -212,24 +208,24 @@ func TestValue(t *testing.T) {
 				return v, err
 			},
 		},
-		"Duration": {
-			func(s string) (interface{}, error) { return time.ParseDuration(s) },
-			func(s string) (interface{}, error) { return Value(s).Duration() },
-			func(s string) (interface{}, error) {
-				var v time.Duration
-				err := Value(s).DurationVar(&v)
-				return v, err
-			},
-		},
-		"Url": {
-			func(s string) (interface{}, error) { return url.ParseRequestURI(s) },
-			func(s string) (interface{}, error) { return Value(s).Url() },
-			func(s string) (interface{}, error) {
-				var v *url.URL
-				err := Value(s).UrlVar(&v)
-				return v, err
-			},
-		},
+		//"Duration": {
+		//	func(s string) (interface{}, error) { return time.ParseDuration(s) },
+		//	func(s string) (interface{}, error) { return Value(s).Duration() },
+		//	func(s string) (interface{}, error) {
+		//		var v time.Duration
+		//		err := Value(s).DurationVar(&v)
+		//		return v, err
+		//	},
+		//},
+		//"Url": {
+		//	func(s string) (interface{}, error) { return url.ParseRequestURI(s) },
+		//	func(s string) (interface{}, error) { return Value(s).Url() },
+		//	func(s string) (interface{}, error) {
+		//		var v *url.URL
+		//		err := Value(s).UrlVar(&v)
+		//		return v, err
+		//	},
+		//},
 	}
 
 	run := func(t *testing.T, prepWantFn, prepHaveFn prepareFunc) {
@@ -260,12 +256,4 @@ func TestValue(t *testing.T) {
 func TestValue_Empty(t *testing.T) {
 	assert.True(t, Value("").Empty())
 	assert.False(t, Value("0").Empty())
-}
-
-func TestValue_UnmarshalText(t *testing.T) {
-	input := "127.0.0.38"
-
-	var target net.IP
-	assert.Nil(t, Value(input).UnmarshalTextWith(&target))
-	assert.Equal(t, net.ParseIP(input), target)
 }

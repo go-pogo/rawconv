@@ -5,12 +5,8 @@
 package parseval
 
 import (
-	"encoding"
-	"net/url"
-	"strconv"
-	"time"
-
 	"github.com/go-pogo/errors"
+	"strconv"
 )
 
 const (
@@ -53,97 +49,3 @@ func (v Value) Bytes() []byte { return []byte(v) }
 
 // BytesVar sets the value p points to, to Value as raw bytes.
 func (v Value) BytesVar(p *[]byte) { *p = v.Bytes() }
-
-// Duration tries to parse Value as time.Duration with time.ParseDuration.
-func (v Value) Duration() (time.Duration, error) {
-	x, err := time.ParseDuration(v.String())
-	return x, errors.WithKind(err, ParseError)
-}
-
-// DurationVar sets the value p points to using Duration.
-func (v Value) DurationVar(p *time.Duration) (err error) {
-	*p, err = v.Duration()
-	return
-}
-
-// Url tries to parse Value as an url.Url with url.ParseRequestURI.
-func (v Value) Url() (*url.URL, error) {
-	x, err := url.ParseRequestURI(v.String())
-	if err != nil {
-		err = errors.WithKind(err, ParseError)
-	}
-	return x, err
-}
-
-// UrlVar sets the value p points to using Url.
-func (v Value) UrlVar(p **url.URL) (err error) {
-	*p, err = v.Url()
-	return
-}
-
-// UnmarshalTextWith uses encoding.TextUnmarshaler u to unmarshal v.
-func (v Value) UnmarshalTextWith(u encoding.TextUnmarshaler) error {
-	err := u.UnmarshalText(v.Bytes())
-	return errors.WithKind(err, errKind(err))
-}
-
-func (v Value) unmarshal(i interface{}) (bool, error) {
-	if u, ok := i.(encoding.TextUnmarshaler); ok {
-		// let TextUnmarshaler decide what to do with possible empty v
-		return true, v.UnmarshalTextWith(u)
-	}
-	if v.Empty() {
-		return true, nil
-	}
-
-	switch p := i.(type) {
-	case *string:
-		v.StringVar(p)
-		return true, nil
-	case *[]byte:
-		v.BytesVar(p)
-		return true, nil
-
-	case *bool:
-		return true, v.BoolVar(p)
-
-	case *int:
-		return true, v.IntVar(p)
-	case *int8:
-		return true, v.Int8Var(p)
-	case *int16:
-		return true, v.Int16Var(p)
-	case *int32:
-		return true, v.Int32Var(p)
-	case *int64:
-		return true, v.Int64Var(p)
-
-	case *uint:
-		return true, v.UintVar(p)
-	case *uint8:
-		return true, v.Uint8Var(p)
-	case *uint16:
-		return true, v.Uint16Var(p)
-	case *uint32:
-		return true, v.Uint32Var(p)
-	case *uint64:
-		return true, v.Uint64Var(p)
-
-	case *float32:
-		return true, v.Float32Var(p)
-	case *float64:
-		return true, v.Float64Var(p)
-
-	case *complex64:
-		return true, v.Complex64Var(p)
-	case *complex128:
-		return true, v.Complex128Var(p)
-
-	case *time.Duration:
-		return true, v.DurationVar(p)
-	case *url.URL:
-		return true, v.UrlVar(&p)
-	}
-
-	return false, nil
-}
