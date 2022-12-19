@@ -3,7 +3,6 @@ package parseval
 import (
 	"github.com/stretchr/testify/assert"
 	"net"
-	"net/netip"
 	"net/url"
 	"reflect"
 	"testing"
@@ -50,10 +49,6 @@ func TestParser_Parse(t *testing.T) {
 		"ip": {
 			val:  "192.168.1.1",
 			want: net.IPv4(192, 168, 1, 1),
-		},
-		"netip": {
-			val:  "192.168.1.1",
-			want: netip.MustParseAddr("192.168.1.1"),
 		},
 	}
 
