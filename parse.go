@@ -107,14 +107,14 @@ func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 	return p
 }
 
-type UnsupportedTypeError struct {
-	Type reflect.Type
+// HasFunc indicates if Parser has a ParseFunc registered for typ.
+func (p *Parser) HasFunc(typ reflect.Type) bool {
+	_, ok := p.Func(typ)
+	return ok
 }
 
-func (e *UnsupportedTypeError) Error() string {
-	return "type `" + e.Type.String() + "` is not supported"
-}
-
+// Func returns the registered ParseFunc for reflect.Type typ and true if it
+// exists. Otherwise, it will return nil and false.
 func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
 	if kind, ok := p.types[typ.Kind()]; ok {
 		if i, ok := kind[typ]; ok {
@@ -133,6 +133,14 @@ func (p *Parser) mustFunc(i int) ParseFunc {
 		panic("func should exist!")
 	}
 	return p.funcs[i]
+}
+
+type UnsupportedTypeError struct {
+	Type reflect.Type
+}
+
+func (e *UnsupportedTypeError) Error() string {
+	return "type `" + e.Type.String() + "` is not supported"
 }
 
 // Parse Value v and set it to dest.
@@ -173,11 +181,11 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 		}
 	}
 
-	// handle aliases of primitive types
 	if v.Empty() {
 		return nil
 	}
 
+	// handle aliases of primitive types
 	switch rv.Kind() {
 	case reflect.String:
 		rv.SetString(v.String())
