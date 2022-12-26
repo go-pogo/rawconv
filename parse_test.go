@@ -13,8 +13,31 @@ import (
 	"time"
 )
 
+func TestUnmarshal(t *testing.T) {
+	t.Run("ptr expected", func(t *testing.T) {
+		var x string
+		assert.ErrorIs(t, Unmarshal("some value", x), ErrPointerExpected)
+	})
+	t.Run("string", func(t *testing.T) {
+		var have string
+		want := "test"
+		assert.Nil(t, Unmarshal(Value(want), &have))
+		assert.Equal(t, want, have)
+	})
+	t.Run("url", func(t *testing.T) {
+		var have url.URL
+		want, err := url.ParseRequestURI("https://example.com:1234/somepath?xyz")
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		assert.Nil(t, Unmarshal(Value(want.String()), &have))
+		assert.Equal(t, want, &have)
+	})
+
+}
+
 func TestParser_Parse(t *testing.T) {
-	ps := "some value"
 	pt, _ := time.Parse(time.RFC3339, "1997-08-29T13:37:00Z")
 	pu, _ := url.ParseRequestURI("http://localhost/")
 
@@ -26,10 +49,6 @@ func TestParser_Parse(t *testing.T) {
 		"string": {
 			val:  "some value",
 			want: "some value",
-		},
-		"*string": {
-			val:  "some value",
-			want: &ps,
 		},
 
 		"duration": {
@@ -44,10 +63,6 @@ func TestParser_Parse(t *testing.T) {
 		"url": {
 			val:  "http://localhost/",
 			want: *pu,
-		},
-		"*url": {
-			val:  "http://localhost/",
-			want: pu,
 		},
 
 		"ip": {

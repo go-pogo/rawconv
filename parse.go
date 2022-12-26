@@ -15,9 +15,8 @@ import (
 
 const (
 	ErrPointerExpected errors.Msg = "expected a pointer to a value"
+	ErrUnableToSet     errors.Msg = "unable to set value"
 	ErrUnableToAddr    errors.Msg = "unable to addr value"
-
-	ParserError errors.Kind = "parser error"
 
 	panicUnsupportedKind = "unsupported kind"
 )
@@ -128,9 +127,11 @@ func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
 	return nil, false
 }
 
+const panicParseFunc = "func should exist!"
+
 func (p *Parser) mustFunc(i int) ParseFunc {
 	if i >= len(p.funcs) {
-		panic("func should exist!")
+		panic(panicParseFunc)
 	}
 	return p.funcs[i]
 }
@@ -150,21 +151,21 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 		return p.parse(v, dest, parseFn)
 	}
 
-	rv := dest
-	for rv.Kind() == reflect.Ptr {
-		// create a pointer to the type rval points to
-		ptr := reflect.New(rv.Type().Elem())
-		rv.Set(ptr)
+	ot := dest.Type()
+	for dest.Kind() == reflect.Ptr {
+		if dest.IsNil() {
+			return errors.New(ErrPointerExpected)
+		}
 
 		// take the value where the pointer points to and try parsing again...
-		rv = ptr.Elem()
-		if parseFn, ok := p.Func(rv.Type()); ok {
-			return p.parse(v, rv, parseFn)
+		dest = dest.Elem()
+		if parseFn, ok := p.Func(dest.Type()); ok {
+			return p.parse(v, dest, parseFn)
 		}
 	}
 
 	// try interface implementations
-	if rv, err := addr(rv); err != nil {
+	if rv, err := addr(dest); err != nil {
 		return err
 	} else {
 		rt := rv.Type()
@@ -186,44 +187,47 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 	}
 
 	// handle aliases of primitive types
-	switch rv.Kind() {
+	switch dest.Kind() {
 	case reflect.String:
-		rv.SetString(v.String())
+		dest.SetString(v.String())
 		return nil
 
 	case reflect.Bool:
 		x, err := v.Bool()
-		rv.SetBool(x)
+		dest.SetBool(x)
 		return err
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		x, err := intSize(v, rv.Type().Bits())
-		rv.SetInt(x)
+		x, err := intSize(v, dest.Type().Bits())
+		dest.SetInt(x)
 		return err
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		x, err := uintSize(v, rv.Type().Bits())
-		rv.SetUint(x)
+		x, err := uintSize(v, dest.Type().Bits())
+		dest.SetUint(x)
 		return err
 
 	case reflect.Float32, reflect.Float64:
-		x, err := floatSize(v, rv.Type().Bits())
-		rv.SetFloat(x)
+		x, err := floatSize(v, dest.Type().Bits())
+		dest.SetFloat(x)
 		return err
 
 	case reflect.Complex64, reflect.Complex128:
-		x, err := complexSize(v, rv.Type().Bits())
-		rv.SetComplex(x)
+		x, err := complexSize(v, dest.Type().Bits())
+		dest.SetComplex(x)
 		return err
 	}
 
-	return errors.WithStack(&UnsupportedTypeError{Type: dest.Type()})
+	return errors.WithStack(&UnsupportedTypeError{Type: ot})
 }
 
 func (p *Parser) parse(v Value, rv reflect.Value, parseFn ParseFunc) error {
 	rv, err := addr(rv)
 	if err != nil {
-		return errors.WithKind(err, ParserError)
+		return err
+	}
+	if !rv.Elem().CanSet() {
+		return errors.New(ErrUnableToSet)
 	}
 
 	dest := rv.Interface()
