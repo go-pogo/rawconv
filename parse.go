@@ -21,7 +21,7 @@ const (
 	panicUnsupportedKind = "unsupported kind"
 )
 
-var dp = newParser(nil)
+var defaultParser = new(Parser)
 
 // Unmarshal Value val to any of the supported types.
 func Unmarshal(val Value, v interface{}) error {
@@ -29,60 +29,46 @@ func Unmarshal(val Value, v interface{}) error {
 		return errors.New(ErrPointerExpected)
 	}
 
-	return dp.Parse(val, reflect.ValueOf(v))
+	return defaultParser.Parse(val, reflect.ValueOf(v))
 }
-
-// Parse Value v to any of the supported types and set its value to
-// reflect.Value rval.
-func Parse(val Value, dest reflect.Value) error { return dp.Parse(val, dest) }
 
 type ParseFunc func(val Value, dest interface{}) error
 
-func Register(typ reflect.Type, fn ParseFunc) { dp.Register(typ, fn) }
-
-func init() {
-	var (
-		duration          = reflect.TypeOf(time.Nanosecond)
-		urlType           = reflect.TypeOf(url.URL{})
-		textUnmarshaler   = reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
-		binaryUnmarshaler = reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem()
-	)
-
-	// common types
-	Register(duration, func(val Value, dest interface{}) (err error) {
-		*dest.(*time.Duration), err = time.ParseDuration(val.String())
-		return
-	})
-	Register(urlType, func(val Value, dest interface{}) error {
-		u, err := url.ParseRequestURI(val.String())
-		*dest.(*url.URL) = *u
+// Exec executes the ParseFunc by taken the address of dest, and passing it as
+// an interface to ParseFunc. It will return an error when the address of
+// reflect.Value dest cannot be taken, or when it is unable to set.
+// Any error returned by ParseFunc is wrapped with ParseError.
+func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
+	dest, err := addr(dest)
+	if err != nil {
 		return err
-	})
+	}
+	if !dest.Elem().CanSet() {
+		return errors.New(ErrUnableToSet)
+	}
 
-	// interfaces
-	Register(textUnmarshaler, func(val Value, dest interface{}) error {
-		return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
-	})
-	Register(binaryUnmarshaler, func(val Value, dest interface{}) error {
-		return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
-	})
+	v := dest.Interface()
+	if err = fn(val, v); err != nil {
+		if errors.GetKind(err) == errors.UnknownKind {
+			return errors.WithKind(err, ParseError)
+		} else {
+			return err
+		}
+	}
+	return nil
 }
 
 type Parser struct {
-	dp    *Parser
-	types map[reflect.Kind]map[reflect.Type]int
-	funcs []ParseFunc
+	parent *Parser
+	types  map[reflect.Kind]map[reflect.Type]int
+	funcs  []ParseFunc
 }
 
-func NewParser() *Parser { return newParser(dp) }
-
-func newParser(dp *Parser) *Parser {
-	return &Parser{
-		dp:    dp,
-		types: make(map[reflect.Kind]map[reflect.Type]int, 4),
-		funcs: make([]ParseFunc, 0, 2),
-	}
+func NewParser() *Parser {
+	return &Parser{parent: defaultParser}
 }
+
+func Register(typ reflect.Type, fn ParseFunc) { defaultParser.Register(typ, fn) }
 
 func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 	k := typ.Kind()
@@ -94,6 +80,13 @@ func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 		// not yet supported
 		k == reflect.Array || k == reflect.Map || k == reflect.Slice {
 		panic(panicUnsupportedKind)
+	}
+
+	if p.types == nil {
+		p.types = make(map[reflect.Kind]map[reflect.Type]int, 3)
+	}
+	if p.funcs == nil {
+		p.funcs = make([]ParseFunc, 0, 2)
 	}
 
 	if _, ok := p.types[k]; !ok {
@@ -120,8 +113,8 @@ func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
 			return p.mustFunc(i), ok
 		}
 	}
-	if p.dp != nil {
-		return p.dp.Func(typ)
+	if p.parent != nil {
+		return p.parent.Func(typ)
 	}
 
 	return nil, false
@@ -136,19 +129,15 @@ func (p *Parser) mustFunc(i int) ParseFunc {
 	return p.funcs[i]
 }
 
-type UnsupportedTypeError struct {
-	Type reflect.Type
-}
-
-func (e *UnsupportedTypeError) Error() string {
-	return "type `" + e.Type.String() + "` is not supported"
-}
+// Parse Value v to any of the supported types and set its value to
+// reflect.Value dest.
+func Parse(v Value, dest reflect.Value) error { return defaultParser.Parse(v, dest) }
 
 // Parse Value v and set it to dest.
 func (p *Parser) Parse(v Value, dest reflect.Value) error {
 	// try exact type match
 	if parseFn, ok := p.Func(dest.Type()); ok {
-		return p.parse(v, dest, parseFn)
+		return parseFn.Exec(v, dest)
 	}
 
 	ot := dest.Type()
@@ -160,7 +149,7 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 		// take the value where the pointer points to and try parsing again...
 		dest = dest.Elem()
 		if parseFn, ok := p.Func(dest.Type()); ok {
-			return p.parse(v, dest, parseFn)
+			return parseFn.Exec(v, dest)
 		}
 	}
 
@@ -174,7 +163,7 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 				continue
 			}
 
-			if parseErr := p.parse(v, rv, p.mustFunc(i)); parseErr != nil {
+			if parseErr := p.mustFunc(i).Exec(v, rv); parseErr != nil {
 				errors.Append(&err, parseErr)
 			} else {
 				return nil
@@ -221,24 +210,12 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 	return errors.WithStack(&UnsupportedTypeError{Type: ot})
 }
 
-func (p *Parser) parse(v Value, rv reflect.Value, parseFn ParseFunc) error {
-	rv, err := addr(rv)
-	if err != nil {
-		return err
-	}
-	if !rv.Elem().CanSet() {
-		return errors.New(ErrUnableToSet)
-	}
+type UnsupportedTypeError struct {
+	Type reflect.Type
+}
 
-	dest := rv.Interface()
-	if err = parseFn(v, dest); err != nil {
-		if errors.GetKind(err) == errors.UnknownKind {
-			return errors.WithKind(err, ParseError)
-		} else {
-			return err
-		}
-	}
-	return nil
+func (e *UnsupportedTypeError) Error() string {
+	return "type `" + e.Type.String() + "` is not supported"
 }
 
 func addr(rv reflect.Value) (reflect.Value, error) {
@@ -249,4 +226,37 @@ func addr(rv reflect.Value) (reflect.Value, error) {
 		return rv, errors.New(ErrUnableToAddr)
 	}
 	return rv.Addr(), nil
+}
+
+func init() {
+	// interfaces
+	Register(
+		reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(),
+		func(val Value, dest interface{}) error {
+			return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
+		},
+	)
+	Register(
+		reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(),
+		func(val Value, dest interface{}) error {
+			return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
+		},
+	)
+
+	// common types
+	Register(
+		reflect.TypeOf(time.Nanosecond),
+		func(val Value, dest interface{}) (err error) {
+			*dest.(*time.Duration), err = time.ParseDuration(val.String())
+			return
+		},
+	)
+	Register(
+		reflect.TypeOf(url.URL{}),
+		func(val Value, dest interface{}) error {
+			u, err := url.ParseRequestURI(val.String())
+			*dest.(*url.URL) = *u
+			return err
+		},
+	)
 }
