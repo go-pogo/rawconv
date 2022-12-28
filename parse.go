@@ -14,22 +14,33 @@ import (
 )
 
 const (
-	ErrPointerExpected errors.Msg = "expected a pointer to a value"
+	ErrPointerExpected errors.Msg = "expected a non-nil pointer to a value"
 	ErrUnableToSet     errors.Msg = "unable to set value"
 	ErrUnableToAddr    errors.Msg = "unable to addr value"
 
-	panicUnsupportedKind = "unsupported kind"
+	InvalidActionError errors.Kind = "invalid action"
 )
 
 var defaultParser = new(Parser)
 
+func init() {
+	// interfaces
+	Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
+	Register(reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(), unmarshalBinary)
+
+	// common types
+	Register(reflect.TypeOf(time.Nanosecond), parseDuration)
+	Register(reflect.TypeOf(url.URL{}), parseUrl)
+}
+
 // Unmarshal Value val to any of the supported types.
 func Unmarshal(val Value, v interface{}) error {
-	if reflect.TypeOf(v).Kind() != reflect.Ptr {
-		return errors.New(ErrPointerExpected)
+	rv := reflect.ValueOf(v)
+	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+		return errors.WithKind(ErrPointerExpected, InvalidActionError)
 	}
 
-	return defaultParser.Parse(val, reflect.ValueOf(v))
+	return defaultParser.Parse(val, rv)
 }
 
 type ParseFunc func(val Value, dest interface{}) error
@@ -39,16 +50,23 @@ type ParseFunc func(val Value, dest interface{}) error
 // reflect.Value dest cannot be taken, or when it is unable to set.
 // Any error returned by ParseFunc is wrapped with ParseError.
 func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
-	dest, err := addr(dest)
-	if err != nil {
-		return err
+	if dest.Kind() == reflect.Ptr {
+		for dest.Elem().Kind() == reflect.Ptr {
+			dest = dest.Elem()
+		}
+	} else {
+		if !dest.CanAddr() {
+			return errors.WithKind(ErrUnableToAddr, InvalidActionError)
+		}
+		dest = dest.Addr()
 	}
+
 	if !dest.Elem().CanSet() {
-		return errors.New(ErrUnableToSet)
+		return errors.WithKind(ErrUnableToSet, InvalidActionError)
 	}
 
 	v := dest.Interface()
-	if err = fn(val, v); err != nil {
+	if err := fn(val, v); err != nil {
 		if errors.GetKind(err) == errors.UnknownKind {
 			return errors.WithKind(err, ParseError)
 		} else {
@@ -69,6 +87,8 @@ func NewParser() *Parser {
 }
 
 func Register(typ reflect.Type, fn ParseFunc) { defaultParser.Register(typ, fn) }
+
+const panicUnsupportedKind = "unsupported kind"
 
 func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 	k := typ.Kind()
@@ -99,12 +119,6 @@ func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 	return p
 }
 
-// HasFunc indicates if Parser has a ParseFunc registered for typ.
-func (p *Parser) HasFunc(typ reflect.Type) bool {
-	_, ok := p.Func(typ)
-	return ok
-}
-
 // Func returns the registered ParseFunc for reflect.Type typ and true if it
 // exists. Otherwise, it will return nil and false.
 func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
@@ -120,11 +134,11 @@ func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
 	return nil, false
 }
 
-const panicParseFunc = "func should exist!"
+const panicInvalidFuncIndex = "invalid index, func should exist!"
 
 func (p *Parser) mustFunc(i int) ParseFunc {
 	if i >= len(p.funcs) {
-		panic(panicParseFunc)
+		panic(panicInvalidFuncIndex)
 	}
 	return p.funcs[i]
 }
@@ -143,7 +157,7 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 	ot := dest.Type()
 	for dest.Kind() == reflect.Ptr {
 		if dest.IsNil() {
-			return errors.New(ErrPointerExpected)
+			return errors.WithKind(ErrPointerExpected, InvalidActionError)
 		}
 
 		// take the value where the pointer points to and try parsing again...
@@ -223,40 +237,26 @@ func addr(rv reflect.Value) (reflect.Value, error) {
 		return rv, nil
 	}
 	if !rv.CanAddr() {
-		return rv, errors.New(ErrUnableToAddr)
+		return rv, errors.WithKind(ErrUnableToAddr, InvalidActionError)
 	}
 	return rv.Addr(), nil
 }
 
-func init() {
-	// interfaces
-	Register(
-		reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(),
-		func(val Value, dest interface{}) error {
-			return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
-		},
-	)
-	Register(
-		reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(),
-		func(val Value, dest interface{}) error {
-			return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
-		},
-	)
+func unmarshalText(val Value, dest interface{}) error {
+	return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
+}
 
-	// common types
-	Register(
-		reflect.TypeOf(time.Nanosecond),
-		func(val Value, dest interface{}) (err error) {
-			*dest.(*time.Duration), err = time.ParseDuration(val.String())
-			return
-		},
-	)
-	Register(
-		reflect.TypeOf(url.URL{}),
-		func(val Value, dest interface{}) error {
-			u, err := url.ParseRequestURI(val.String())
-			*dest.(*url.URL) = *u
-			return err
-		},
-	)
+func unmarshalBinary(val Value, dest interface{}) error {
+	return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
+}
+
+func parseDuration(val Value, dest interface{}) (err error) {
+	*dest.(*time.Duration), err = time.ParseDuration(val.String())
+	return
+}
+
+func parseUrl(val Value, dest interface{}) error {
+	u, err := url.ParseRequestURI(val.String())
+	*dest.(*url.URL) = *u
+	return err
 }

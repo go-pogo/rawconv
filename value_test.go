@@ -18,15 +18,13 @@ func TestValue(t *testing.T) {
 		"bool":   {"true", "false"},
 		"int":    {"100", "+33", "-349"},
 		"float":  {"1.1", "0.59999", "22.564856"},
-		"time":   {"10s", "2h"},
-		"url":    {"https://foo.bar", "user:pass@tcp(12.34.56.78:1337)/qux"},
 	}
 
 	type prepareFunc func(s string) (interface{}, error)
 
 	tests := map[string][3]prepareFunc{
 		"String": {
-			func(s string) (interface{}, error) { return string(s), nil },
+			func(s string) (interface{}, error) { return s, nil },
 			func(s string) (interface{}, error) { return Value(s).String(), nil },
 			func(s string) (interface{}, error) {
 				var v string
@@ -238,4 +236,10 @@ func TestValue(t *testing.T) {
 func TestValue_Empty(t *testing.T) {
 	assert.True(t, Value("").Empty())
 	assert.False(t, Value("0").Empty())
+}
+
+func TestValue_GoString(t *testing.T) {
+	assert.Equal(t, `parseval.Value("")`, Value("").GoString())
+	assert.Equal(t, `parseval.Value("0")`, Value("0").GoString())
+	assert.Equal(t, `parseval.Value("just some value")`, Value("just some value").GoString())
 }

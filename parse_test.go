@@ -13,11 +13,24 @@ import (
 	"time"
 )
 
+func assertInvalidActionError(t *testing.T, err, target error) {
+	assert.ErrorIs(t, err, target)
+	assert.ErrorIs(t, err, InvalidActionError)
+}
+
 func TestUnmarshal(t *testing.T) {
-	t.Run("ptr expected", func(t *testing.T) {
-		var x string
-		assert.ErrorIs(t, Unmarshal("some value", x), ErrPointerExpected)
-	})
+	tests := map[string]interface{}{
+		"nil":           nil,
+		"not a pointer": struct{}{},
+		"nil pointer":   (*url.URL)(nil),
+	}
+	for name, val := range tests {
+		t.Run(name, func(t *testing.T) {
+			err := Unmarshal("", val)
+			assertInvalidActionError(t, err, ErrPointerExpected)
+		})
+	}
+
 	t.Run("string", func(t *testing.T) {
 		var have string
 		want := "test"
@@ -73,13 +86,11 @@ func TestParser_Parse(t *testing.T) {
 
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
-			rtyp := reflect.TypeOf(tc.want)
-			// reflect.New returns a pointer to the type,
-			// Elem() removes that pointer
-			rval := reflect.New(rtyp).Elem()
+			rt := reflect.TypeOf(tc.want)
+			rv := reflect.New(rt).Elem()
 
-			haveErr := Parse(tc.val, rval)
-			assert.Equal(t, tc.want, rval.Interface())
+			haveErr := Parse(tc.val, rv)
+			assert.Equal(t, tc.want, rv.Interface())
 
 			if tc.wantErr != nil {
 				assert.ErrorIs(t, haveErr, tc.wantErr)
@@ -88,4 +99,30 @@ func TestParser_Parse(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestParseFunc_Exec(t *testing.T) {
+	typ := reflect.TypeOf(time.Nanosecond)
+	parseFunc := ParseFunc(parseDuration)
+
+	t.Run("zero value", func(t *testing.T) {
+		err := parseFunc.Exec("10s", reflect.Zero(typ))
+		assertInvalidActionError(t, err, ErrUnableToAddr)
+	})
+	t.Run("nil pointer", func(t *testing.T) {
+		var d *time.Duration
+		err := parseFunc.Exec("10s", reflect.ValueOf(d))
+		assertInvalidActionError(t, err, ErrUnableToSet)
+	})
+	t.Run("multiple pointers", func(t *testing.T) {
+		var d *time.Duration
+		err := parseFunc.Exec("10s", reflect.ValueOf(&d))
+		assertInvalidActionError(t, err, ErrUnableToSet)
+	})
+
+	t.Run("ok", func(t *testing.T) {
+		rv := reflect.New(typ)
+		assert.Nil(t, parseFunc.Exec("10s", rv))
+		assert.Equal(t, time.Second*10, rv.Elem().Interface())
+	})
 }
