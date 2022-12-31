@@ -40,7 +40,7 @@ func Unmarshal(val Value, v interface{}) error {
 		return errors.WithKind(ErrPointerExpected, InvalidActionError)
 	}
 
-	return defaultParser.Parse(val, rv)
+	return defaultParser.parse(val, rv)
 }
 
 type ParseFunc func(val Value, dest interface{}) error
@@ -50,28 +50,32 @@ type ParseFunc func(val Value, dest interface{}) error
 // reflect.Value dest cannot be taken, or when it is unable to set.
 // Any error returned by ParseFunc is wrapped with ParseError.
 func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
-	if dest.Kind() == reflect.Ptr {
-		for dest.Elem().Kind() == reflect.Ptr {
-			dest = dest.Elem()
-		}
-	} else {
+	if dest.Kind() != reflect.Ptr {
 		if !dest.CanAddr() {
 			return errors.WithKind(ErrUnableToAddr, InvalidActionError)
 		}
-		dest = dest.Addr()
+		return fn.exec(val, dest.Addr())
 	}
 
-	if !dest.Elem().CanSet() {
-		return errors.WithKind(ErrUnableToSet, InvalidActionError)
+	var err error
+	if dest, err = zero(dest); err != nil {
+		return err
 	}
-
-	v := dest.Interface()
-	if err := fn(val, v); err != nil {
-		if errors.GetKind(err) == errors.UnknownKind {
-			return errors.WithKind(err, ParseError)
-		} else {
+	for dest.Elem().Kind() == reflect.Ptr {
+		if dest, err = zero(dest.Elem()); err != nil {
 			return err
 		}
+	}
+
+	return fn.exec(val, dest)
+}
+
+func (fn ParseFunc) exec(val Value, dest reflect.Value) error {
+	if err := fn(val, dest.Interface()); err != nil {
+		if errors.GetKind(err) == errors.UnknownKind {
+			return errors.WithKind(err, ParseError)
+		}
+		return err
 	}
 	return nil
 }
@@ -149,17 +153,21 @@ func Parse(v Value, dest reflect.Value) error { return defaultParser.Parse(v, de
 
 // Parse Value v and set it to dest.
 func (p *Parser) Parse(v Value, dest reflect.Value) error {
+	if dest.Kind() != reflect.Ptr && !dest.CanSet() {
+		return errors.New(ErrUnableToSet)
+	}
+	return p.parse(v, dest)
+}
+
+func (p *Parser) parse(v Value, dest reflect.Value) error {
 	// try exact type match
 	if parseFn, ok := p.Func(dest.Type()); ok {
 		return parseFn.Exec(v, dest)
 	}
 
 	ot := dest.Type()
-	for dest.Kind() == reflect.Ptr {
-		if dest.IsNil() {
-			return errors.WithKind(ErrPointerExpected, InvalidActionError)
-		}
 
+	for dest.Kind() == reflect.Ptr {
 		// take the value where the pointer points to and try parsing again...
 		dest = dest.Elem()
 		if parseFn, ok := p.Func(dest.Type()); ok {
@@ -240,6 +248,17 @@ func addr(rv reflect.Value) (reflect.Value, error) {
 		return rv, errors.WithKind(ErrUnableToAddr, InvalidActionError)
 	}
 	return rv.Addr(), nil
+}
+
+func zero(rv reflect.Value) (reflect.Value, error) {
+	if rv.IsNil() {
+		if !rv.CanSet() {
+			return rv, errors.New(ErrUnableToSet)
+		}
+
+		rv.Set(reflect.New(rv.Type().Elem()))
+	}
+	return rv, nil
 }
 
 func unmarshalText(val Value, dest interface{}) error {

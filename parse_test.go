@@ -105,22 +105,22 @@ func TestParseFunc_Exec(t *testing.T) {
 	typ := reflect.TypeOf(time.Nanosecond)
 	parseFunc := ParseFunc(parseDuration)
 
+	t.Parallel()
 	t.Run("zero value", func(t *testing.T) {
 		err := parseFunc.Exec("10s", reflect.Zero(typ))
 		assertInvalidActionError(t, err, ErrUnableToAddr)
 	})
 	t.Run("nil pointer", func(t *testing.T) {
 		var d *time.Duration
-		err := parseFunc.Exec("10s", reflect.ValueOf(d))
-		assertInvalidActionError(t, err, ErrUnableToSet)
+		assert.Nil(t, parseFunc.Exec("10s", reflect.ValueOf(&d)))
+		assert.Equal(t, time.Second*10, *d)
 	})
 	t.Run("multiple pointers", func(t *testing.T) {
-		var d *time.Duration
-		err := parseFunc.Exec("10s", reflect.ValueOf(&d))
-		assertInvalidActionError(t, err, ErrUnableToSet)
+		var d ***time.Duration
+		assert.Nil(t, parseFunc.Exec("10s", reflect.ValueOf(&d)))
+		assert.Equal(t, time.Second*10, ***d)
 	})
-
-	t.Run("ok", func(t *testing.T) {
+	t.Run("new", func(t *testing.T) {
 		rv := reflect.New(typ)
 		assert.Nil(t, parseFunc.Exec("10s", rv))
 		assert.Equal(t, time.Second*10, rv.Elem().Interface())
