@@ -19,6 +19,8 @@ func assertInvalidActionError(t *testing.T, err, target error) {
 }
 
 func TestUnmarshal(t *testing.T) {
+	t.Parallel()
+
 	tests := map[string]interface{}{
 		"nil":           nil,
 		"not a pointer": struct{}{},
@@ -38,16 +40,22 @@ func TestUnmarshal(t *testing.T) {
 		assert.Equal(t, want, have)
 	})
 	t.Run("url", func(t *testing.T) {
-		var have url.URL
+		var have *url.URL
 		want, err := url.ParseRequestURI("https://example.com:1234/somepath?xyz")
 		if err != nil {
 			t.Fatal(err)
 		}
 
 		assert.Nil(t, Unmarshal(Value(want.String()), &have))
-		assert.Equal(t, want, &have)
+		assert.Equal(t, want, have)
 	})
+	t.Run("ip", func(t *testing.T) {
+		var have *net.IP
+		want := net.ParseIP("10.0.0.10")
 
+		assert.Nil(t, Unmarshal(Value(want.String()), &have))
+		assert.Equal(t, want, *have)
+	})
 }
 
 func TestParser_Parse(t *testing.T) {
@@ -106,7 +114,7 @@ func TestParseFunc_Exec(t *testing.T) {
 	parseFunc := ParseFunc(parseDuration)
 
 	t.Parallel()
-	t.Run("zero value", func(t *testing.T) {
+	t.Run("value value", func(t *testing.T) {
 		err := parseFunc.Exec("10s", reflect.Zero(typ))
 		assertInvalidActionError(t, err, ErrUnableToAddr)
 	})
