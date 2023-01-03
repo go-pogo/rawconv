@@ -53,15 +53,26 @@ func unmarshalBinary(val Value, dest interface{}) error {
 	return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
 }
 
-func parseDuration(val Value, dest interface{}) (err error) {
-	*dest.(*time.Duration), err = time.ParseDuration(val.String())
-	return
+func parseDuration(val Value, dest interface{}) error {
+	d, err := time.ParseDuration(val.String())
+	if err != nil {
+		return err
+	}
+	*dest.(*time.Duration) = d
+	return nil
 }
 
 func parseUrl(val Value, dest interface{}) error {
+	if val.Empty() {
+		return nil
+	}
+
 	u, err := url.ParseRequestURI(val.String())
+	if err != nil {
+		return err
+	}
 	*dest.(*url.URL) = *u
-	return err
+	return nil
 }
 
 // Exec executes the ParseFunc by taken the address of dest, and passing it as
