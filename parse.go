@@ -173,6 +173,9 @@ func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
 	if p.parent != nil {
 		return p.parent.Func(typ)
 	}
+	if typ.Kind() == reflect.Ptr {
+		return p.Func(typ.Elem())
+	}
 
 	return nil, false
 }
