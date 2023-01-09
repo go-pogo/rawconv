@@ -21,17 +21,15 @@ const (
 	InvalidActionError errors.Kind = "invalid action"
 )
 
-var defaultParser = new(Parser)
-
-func init() {
-	// interfaces
-	Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
-	Register(reflect.TypeOf((*encoding.BinaryUnmarshaler)(nil)).Elem(), unmarshalBinary)
-
-	// common types
-	Register(reflect.TypeOf(time.Nanosecond), parseDuration)
-	Register(reflect.TypeOf(url.URL{}), parseUrl)
+type UnsupportedTypeError struct {
+	Type reflect.Type
 }
+
+func (e *UnsupportedTypeError) Error() string {
+	return "type `" + e.Type.String() + "` is not supported"
+}
+
+var defaultParser = &Parser{root: true}
 
 // Unmarshal Value val to any of the supported types.
 func Unmarshal(val Value, v interface{}) error {
@@ -47,10 +45,6 @@ type ParseFunc func(val Value, dest interface{}) error
 
 func unmarshalText(val Value, dest interface{}) error {
 	return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
-}
-
-func unmarshalBinary(val Value, dest interface{}) error {
-	return dest.(encoding.BinaryUnmarshaler).UnmarshalBinary(val.Bytes())
 }
 
 func parseDuration(val Value, dest interface{}) error {
@@ -75,49 +69,20 @@ func parseUrl(val Value, dest interface{}) error {
 	return nil
 }
 
-// Exec executes the ParseFunc by taken the address of dest, and passing it as
-// an interface to ParseFunc. It will return an error when the address of
-// reflect.Value dest cannot be taken, or when it is unable to set.
-// Any error returned by ParseFunc is wrapped with ParseError.
-func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
-	if dest.Kind() != reflect.Ptr {
-		if !dest.CanAddr() {
-			return errors.WithKind(ErrUnableToAddr, InvalidActionError)
-		}
-		return fn.exec(val, dest.Addr())
-	}
-
-	var err error
-	if dest, err = value(dest); err != nil {
-		return err
-	}
-	for dest.Elem().Kind() == reflect.Ptr {
-		if dest, err = value(dest.Elem()); err != nil {
-			return err
-		}
-	}
-
-	return fn.exec(val, dest)
-}
-
-func (fn ParseFunc) exec(val Value, dest reflect.Value) error {
-	if err := fn(val, dest.Interface()); err != nil {
-		if errors.GetKind(err) == errors.UnknownKind {
-			return errors.WithKind(err, ParseError)
-		}
-		return err
-	}
-	return nil
-}
-
 type Parser struct {
-	parent *Parser
-	types  map[reflect.Kind]map[reflect.Type]int
-	funcs  []ParseFunc
+	root     bool
+	types    map[reflect.Kind]map[reflect.Type]int
+	resolved map[reflect.Kind]map[reflect.Type]int
+	funcs    []ParseFunc
 }
 
-func NewParser() *Parser {
-	return &Parser{parent: defaultParser}
+func init() {
+	// interfaces
+	Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
+
+	// common types
+	Register(reflect.TypeOf(time.Nanosecond), parseDuration)
+	Register(reflect.TypeOf(url.URL{}), parseUrl)
 }
 
 // Register ParseFunc for typ, making it available for Unmarshal, Parse and
@@ -156,33 +121,78 @@ func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 	return p
 }
 
-// Func returns the ParseFunc for reflect.Type typ and true if it is globally
-// registered with Register. Otherwise, it will return nil and false.
-func Func(typ reflect.Type) (ParseFunc, bool) {
+// Func returns the globally registered ParseFunc for reflect.Type typ or nil
+// if there is none registered with Register.
+func Func(typ reflect.Type) ParseFunc {
 	return defaultParser.Func(typ)
 }
 
-// Func returns the ParseFunc for reflect.Type typ and true if it is (globally)
-// registered with Register. Otherwise, it will return nil and false.
-func (p *Parser) Func(typ reflect.Type) (ParseFunc, bool) {
-	if kind, ok := p.types[typ.Kind()]; ok {
-		if i, ok := kind[typ]; ok {
-			return p.mustFunc(i), ok
+// Func returns the (globally) registered ParseFunc for reflect.Type typ or nil
+// if there is none registered with Register.
+func (p *Parser) Func(typ reflect.Type) ParseFunc {
+	if p.funcs == nil {
+		if p.root {
+			return nil
 		}
-	}
-	if p.parent != nil {
-		return p.parent.Func(typ)
-	}
-	if typ.Kind() == reflect.Ptr {
-		return p.Func(typ.Elem())
+
+		// no custom ParseFunc registered for this Parser,
+		// act like we're defaultParser...
+		return defaultParser.Func(typ)
 	}
 
-	return nil, false
+	fn := p.getFunc(typ)
+	if fn == nil && typ.Kind() != reflect.Ptr {
+		fn = p.getFuncFromImpl(reflect.New(typ).Type())
+	}
+	return fn
+}
+
+func (p *Parser) getFunc(typ reflect.Type) ParseFunc {
+	if fn := p.getFuncFromType(typ); fn != nil {
+		return fn
+	}
+
+	if typ.Kind() == reflect.Ptr {
+		if fn := p.getFunc(typ.Elem()); fn != nil {
+			return fn
+		}
+		if fn := p.getFuncFromImpl(typ); fn != nil {
+			return fn
+		}
+	}
+
+	return nil
+}
+
+func (p *Parser) getFuncFromType(typ reflect.Type) ParseFunc {
+	if kind, ok := p.types[typ.Kind()]; ok {
+		if i, ok := kind[typ]; ok {
+			return p.getFuncFromIndex(i)
+		}
+	}
+	if !p.root {
+		return defaultParser.getFuncFromType(typ)
+	}
+
+	return nil
+}
+
+func (p *Parser) getFuncFromImpl(typ reflect.Type) ParseFunc {
+	for u, i := range p.types[reflect.Interface] {
+		if typ.Implements(u) {
+			return p.getFuncFromIndex(i)
+		}
+	}
+	if !p.root {
+		return defaultParser.getFuncFromImpl(typ)
+	}
+
+	return nil
 }
 
 const panicInvalidFuncIndex = "parseval.Parser: invalid index, func must exist!"
 
-func (p *Parser) mustFunc(i int) ParseFunc {
+func (p *Parser) getFuncFromIndex(i int) ParseFunc {
 	if i >= len(p.funcs) {
 		panic(panicInvalidFuncIndex)
 	}
@@ -203,9 +213,12 @@ func (p *Parser) Parse(v Value, dest reflect.Value) error {
 }
 
 func (p *Parser) parse(v Value, dest reflect.Value) error {
-	// try exact type match
-	if parseFn, ok := p.Func(dest.Type()); ok {
+	if parseFn := p.Func(dest.Type()); parseFn != nil {
 		return parseFn.Exec(v, dest)
+	}
+
+	if v.Empty() {
+		return nil
 	}
 
 	ot := dest.Type()
@@ -216,32 +229,6 @@ func (p *Parser) parse(v Value, dest reflect.Value) error {
 		if dest, err = value(dest.Elem()); err != nil {
 			return err
 		}
-
-		if parseFn, ok := p.Func(dest.Type()); ok {
-			return parseFn.Exec(v, dest)
-		}
-	}
-
-	// try interface implementations
-	if rv, err := addr(dest); err != nil {
-		return err
-	} else {
-		rt := rv.Type()
-		for typ, i := range p.types[reflect.Interface] {
-			if !rt.Implements(typ) {
-				continue
-			}
-
-			if parseErr := p.mustFunc(i).Exec(v, rv); parseErr != nil {
-				errors.Append(&err, parseErr)
-			} else {
-				return nil
-			}
-		}
-	}
-
-	if v.Empty() {
-		return nil
 	}
 
 	// handle aliases of primitive types
@@ -279,23 +266,39 @@ func (p *Parser) parse(v Value, dest reflect.Value) error {
 	return errors.WithStack(&UnsupportedTypeError{Type: ot})
 }
 
-type UnsupportedTypeError struct {
-	Type reflect.Type
+// Exec executes the ParseFunc by taken the address of dest, and passing it as
+// an interface to ParseFunc. It will return an error when the address of
+// reflect.Value dest cannot be taken, or when it is unable to set.
+// Any error returned by ParseFunc is wrapped with ParseError.
+func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
+	if dest.Kind() != reflect.Ptr {
+		if !dest.CanAddr() {
+			return errors.WithKind(ErrUnableToAddr, InvalidActionError)
+		}
+		return fn.exec(val, dest.Addr())
+	}
+
+	var err error
+	if dest, err = value(dest); err != nil {
+		return err
+	}
+	for dest.Elem().Kind() == reflect.Ptr {
+		if dest, err = value(dest.Elem()); err != nil {
+			return err
+		}
+	}
+
+	return fn.exec(val, dest)
 }
 
-func (e *UnsupportedTypeError) Error() string {
-	return "type `" + e.Type.String() + "` is not supported"
-}
-
-// addr returns a pointer to the reflect.Value.
-func addr(rv reflect.Value) (reflect.Value, error) {
-	if rv.Kind() == reflect.Ptr {
-		return rv, nil
+func (fn ParseFunc) exec(val Value, dest reflect.Value) error {
+	if err := fn(val, dest.Interface()); err != nil {
+		if errors.GetKind(err) == errors.UnknownKind {
+			return errors.WithKind(err, ParseError)
+		}
+		return err
 	}
-	if !rv.CanAddr() {
-		return rv, errors.WithKind(ErrUnableToAddr, InvalidActionError)
-	}
-	return rv.Addr(), nil
+	return nil
 }
 
 // value ensures the reflect.Value is not nil.
