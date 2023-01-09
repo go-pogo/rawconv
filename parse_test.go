@@ -18,6 +18,47 @@ func assertInvalidActionError(t *testing.T, err, target error) {
 	assert.ErrorIs(t, err, InvalidActionError)
 }
 
+func TestFunc(t *testing.T) {
+	tests := []struct {
+		want  uintptr
+		types []reflect.Type
+	}{
+		{
+			want: reflect.ValueOf(unmarshalText).Pointer(),
+			types: []reflect.Type{
+				reflect.TypeOf(net.IP{}),
+				reflect.TypeOf((*net.IP)(nil)),
+				reflect.TypeOf((**net.IP)(nil)),
+			},
+		},
+		{
+			want: reflect.ValueOf(parseDuration).Pointer(),
+			types: []reflect.Type{
+				reflect.TypeOf(time.Second),
+				reflect.TypeOf((*time.Duration)(nil)),
+				reflect.TypeOf((**time.Duration)(nil)),
+			},
+		},
+		{
+			want: reflect.ValueOf(parseUrl).Pointer(),
+			types: []reflect.Type{
+				reflect.TypeOf(url.URL{}),
+				reflect.TypeOf((*url.URL)(nil)),
+				reflect.TypeOf((**url.URL)(nil)),
+			},
+		},
+	}
+
+	for _, tc := range tests {
+		for _, typ := range tc.types {
+			t.Run(typ.String(), func(t *testing.T) {
+				have := Func(typ)
+				assert.Equal(t, tc.want, reflect.ValueOf(have).Pointer())
+			})
+		}
+	}
+}
+
 func TestUnmarshal(t *testing.T) {
 	t.Parallel()
 
@@ -49,6 +90,11 @@ func TestUnmarshal(t *testing.T) {
 		assert.Nil(t, Unmarshal(Value(want.String()), &have))
 		assert.Equal(t, want, have)
 	})
+	t.Run("empty url", func(t *testing.T) {
+		var have *url.URL
+		assert.Nil(t, Unmarshal("", &have))
+		assert.Equal(t, new(url.URL), have)
+	})
 	t.Run("ip", func(t *testing.T) {
 		var have *net.IP
 		want := net.ParseIP("10.0.0.10")
@@ -58,9 +104,10 @@ func TestUnmarshal(t *testing.T) {
 	})
 }
 
-func TestParser_Parse(t *testing.T) {
+func TestParse(t *testing.T) {
 	pt, _ := time.Parse(time.RFC3339, "1997-08-29T13:37:00Z")
 	pu, _ := url.ParseRequestURI("http://localhost/")
+	ps := "pointer to string"
 
 	tests := map[string]struct {
 		val     Value
@@ -70,6 +117,10 @@ func TestParser_Parse(t *testing.T) {
 		"string": {
 			val:  "some value",
 			want: "some value",
+		},
+		"*string": {
+			val:  Value(ps),
+			want: &ps,
 		},
 
 		"duration": {
@@ -95,10 +146,10 @@ func TestParser_Parse(t *testing.T) {
 	for name, tc := range tests {
 		t.Run(name, func(t *testing.T) {
 			rt := reflect.TypeOf(tc.want)
-			rv := reflect.New(rt).Elem()
+			rv := reflect.New(rt)
 
 			haveErr := Parse(tc.val, rv)
-			assert.Equal(t, tc.want, rv.Interface())
+			assert.Equal(t, tc.want, rv.Elem().Interface())
 
 			if tc.wantErr != nil {
 				assert.ErrorIs(t, haveErr, tc.wantErr)
