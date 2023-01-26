@@ -48,6 +48,10 @@ func unmarshalText(val Value, dest interface{}) error {
 }
 
 func parseDuration(val Value, dest interface{}) error {
+	if val.Empty() {
+		return nil
+	}
+
 	d, err := time.ParseDuration(val.String())
 	if err != nil {
 		return err

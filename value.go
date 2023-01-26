@@ -14,8 +14,6 @@ const (
 	ValidationError errors.Kind = "validation error"
 )
 
-var Separator = ","
-
 func errKind(err error) errors.Kind {
 	if ne, ok := err.(*strconv.NumError); ok {
 		if ne.Err == strconv.ErrRange {
@@ -34,7 +32,7 @@ func errKind(err error) errors.Kind {
 type Value string
 
 // Empty indicates if Value is an empty string.
-func (v Value) Empty() bool { return v.String() == "" }
+func (v Value) Empty() bool { return string(v) == "" }
 
 func (v Value) GoString() string { return `parseval.Value("` + v.String() + `")` }
 
