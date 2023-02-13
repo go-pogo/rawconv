@@ -7,17 +7,21 @@ package parseval
 import (
 	"github.com/go-pogo/errors"
 	"github.com/stretchr/testify/assert"
+	"net/url"
 	"strconv"
 	"testing"
+	"time"
 )
 
 func TestValue(t *testing.T) {
 	types := map[string][]string{
-		"empty":  {""},
-		"string": {"some value", "another string"},
-		"bool":   {"true", "false"},
-		"int":    {"100", "+33", "-349"},
-		"float":  {"1.1", "0.59999", "22.564856"},
+		"empty":    {""},
+		"string":   {"some value", "another string"},
+		"bool":     {"true", "false"},
+		"int":      {"100", "+33", "-349"},
+		"float":    {"1.1", "0.59999", "22.564856"},
+		"duration": {"10s", "2h13m12s"},
+		"url":      {"http://foo.bar", "ftp://user@qux.xoo"},
 	}
 
 	type prepareFunc func(s string) (interface{}, error)
@@ -204,6 +208,29 @@ func TestValue(t *testing.T) {
 				var v complex128
 				err := Value(s).Complex128Var(&v)
 				return v, err
+			},
+		},
+		"Duration": {
+			func(s string) (interface{}, error) { return time.ParseDuration(s) },
+			func(s string) (interface{}, error) { return Value(s).Duration() },
+			func(s string) (interface{}, error) {
+				var v time.Duration
+				err := Value(s).DurationVar(&v)
+				return v, err
+			},
+		},
+		"Url": {
+			func(s string) (interface{}, error) { return url.ParseRequestURI(s) },
+			func(s string) (interface{}, error) { return Value(s).Url() },
+			func(s string) (interface{}, error) {
+				var v url.URL
+				err := Value(s).UrlVar(&v)
+
+				if (v == url.URL{}) {
+					return (*url.URL)(nil), err
+				} else {
+					return &v, err
+				}
 			},
 		},
 	}

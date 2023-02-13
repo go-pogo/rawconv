@@ -47,32 +47,6 @@ func unmarshalText(val Value, dest interface{}) error {
 	return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
 }
 
-func parseDuration(val Value, dest interface{}) error {
-	if val.Empty() {
-		return nil
-	}
-
-	d, err := time.ParseDuration(val.String())
-	if err != nil {
-		return err
-	}
-	*dest.(*time.Duration) = d
-	return nil
-}
-
-func parseUrl(val Value, dest interface{}) error {
-	if val.Empty() {
-		return nil
-	}
-
-	u, err := url.ParseRequestURI(val.String())
-	if err != nil {
-		return err
-	}
-	*dest.(*url.URL) = *u
-	return nil
-}
-
 type Parser struct {
 	root  bool
 	types map[reflect.Kind]map[reflect.Type]int
