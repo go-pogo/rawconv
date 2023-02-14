@@ -25,6 +25,11 @@ type UnsupportedTypeError struct {
 	Type reflect.Type
 }
 
+func (e *UnsupportedTypeError) Is(err error) bool {
+	t, ok := err.(*UnsupportedTypeError)
+	return ok && e.Type == t.Type
+}
+
 func (e *UnsupportedTypeError) Error() string {
 	return "type `" + e.Type.String() + "` is not supported"
 }
