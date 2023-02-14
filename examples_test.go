@@ -6,6 +6,7 @@ package parseval
 
 import (
 	"fmt"
+	"github.com/davecgh/go-spew/spew"
 	"net/url"
 	"reflect"
 	"time"
@@ -23,10 +24,34 @@ func ExampleUnmarshal() {
 
 func ExampleParse() {
 	var website *url.URL
-	if err := Parse("http://example.com", reflect.ValueOf(&website)); err != nil {
+	if err := Parse("https://example.com", reflect.ValueOf(&website)); err != nil {
 		panic(err)
 	}
 
 	fmt.Println(website.String())
-	// Output: http://example.com
+	// Output: https://example.com
+}
+
+func ExampleParser_Parse() {
+	type myType struct {
+		something string
+	}
+
+	var parser Parser
+	parser.Register(reflect.TypeOf(myType{}), func(val Value, dest interface{}) error {
+		mt := dest.(*myType)
+		mt.something = val.String()
+		return nil
+	})
+
+	var mt myType
+	if err := parser.Parse("some value", reflect.ValueOf(&mt)); err != nil {
+		panic(err)
+	}
+
+	spew.Dump(mt)
+	// Output:
+	// (parseval.myType) {
+	//  something: (string) (len=10) "some value"
+	// }
 }
