@@ -10,7 +10,7 @@ import (
 	"github.com/go-pogo/errors"
 )
 
-// Complex64 tries to parse Value as a complex64 with strconv.ParseComplex.
+// Complex64 tries to parse Value as a complex64 using strconv.ParseComplex.
 func (v Value) Complex64() (complex64, error) {
 	x, err := complexSize(v, 64)
 	return complex64(x), err
@@ -22,7 +22,7 @@ func (v Value) Complex64Var(p *complex64) (err error) {
 	return
 }
 
-// Complex128 tries to parse Value as a complex128 with strconv.ParseComplex.
+// Complex128 tries to parse Value as a complex128 using strconv.ParseComplex.
 func (v Value) Complex128() (complex128, error) {
 	return complexSize(v, 128)
 }

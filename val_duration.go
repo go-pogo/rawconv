@@ -9,6 +9,7 @@ import (
 	"time"
 )
 
+// Duration tries to parse Value as a time.Duration using time.ParseDuration.
 func (v Value) Duration() (time.Duration, error) {
 	x, err := time.ParseDuration(v.String())
 	return x, errors.WithKind(err, ParseError)
@@ -19,7 +20,7 @@ func (v Value) DurationVar(p *time.Duration) (err error) {
 	return
 }
 
-func parseDuration(val Value, dest interface{}) error {
+func unmarshalDuration(val Value, dest interface{}) error {
 	if val.Empty() {
 		return nil
 	}

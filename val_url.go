@@ -9,6 +9,7 @@ import (
 	"net/url"
 )
 
+// Url tries to parse Value as an *url.URL using url.ParseRequestURI.
 func (v Value) Url() (*url.URL, error) {
 	x, err := url.ParseRequestURI(v.String())
 	if err != nil {
@@ -26,7 +27,7 @@ func (v Value) UrlVar(p *url.URL) error {
 	return nil
 }
 
-func parseUrl(val Value, dest interface{}) error {
+func unmarshalUrl(val Value, dest interface{}) error {
 	if val.Empty() {
 		return nil
 	}
