@@ -5,7 +5,10 @@
 package parseval
 
 import (
+	"encoding"
+	"fmt"
 	"github.com/go-pogo/errors"
+	"reflect"
 	"strconv"
 )
 
@@ -30,6 +33,24 @@ func errKind(err error) errors.Kind {
 //
 //	boolVal, err := parseval.Value("true").Bool()
 type Value string
+
+func From(v interface{}) (Value, error) {
+	if rv, ok := v.(reflect.Value); ok {
+		v = rv.Interface()
+	}
+
+	switch v := v.(type) {
+	case encoding.TextMarshaler:
+		b, err := v.MarshalText()
+		return Value(b), errors.WithStack(err)
+	case string:
+		return Value(v), nil
+	case []byte:
+		return Value(v), nil
+	}
+
+	return Value(fmt.Sprintf("%v", v)), nil
+}
 
 // Empty indicates if Value is an empty string.
 func (v Value) Empty() bool { return string(v) == "" }
