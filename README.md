@@ -9,7 +9,7 @@ parseval
 
 [latest-release-url]: https://github.com/go-pogo/parseval/releases
 
-[build-status-img]: https://github.com/go-pogo/parseval/workflows/Test/badge.svg
+[build-status-img]: https://github.com/go-pogo/parseval/actions/workflows/test.yml/badge.svg
 
 [build-status-url]: https://github.com/go-pogo/parseval/actions/workflows/test.yml
 
