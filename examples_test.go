@@ -22,7 +22,7 @@ func ExampleUnmarshal() {
 	// Output: 1h2m3s
 }
 
-func ExampleParse() {
+func ExampleUnmarshalReflect() {
 	var website *url.URL
 	if err := UnmarshalReflect("https://example.com", reflect.ValueOf(&website)); err != nil {
 		panic(err)
@@ -32,7 +32,7 @@ func ExampleParse() {
 	// Output: https://example.com
 }
 
-func ExampleParser_Parse() {
+func ExampleUnmarshaler_Register() {
 	type myType struct {
 		something string
 	}
