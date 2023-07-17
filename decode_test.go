@@ -32,7 +32,7 @@ func TestFunc(t *testing.T) {
 			},
 		},
 		{
-			want: reflect.ValueOf(parseDuration).Pointer(),
+			want: reflect.ValueOf(unmarshalDuration).Pointer(),
 			types: []reflect.Type{
 				reflect.TypeOf(time.Second),
 				reflect.TypeOf((*time.Duration)(nil)),
@@ -40,7 +40,7 @@ func TestFunc(t *testing.T) {
 			},
 		},
 		{
-			want: reflect.ValueOf(parseUrl).Pointer(),
+			want: reflect.ValueOf(unmarshalUrl).Pointer(),
 			types: []reflect.Type{
 				reflect.TypeOf(url.URL{}),
 				reflect.TypeOf((*url.URL)(nil)),
@@ -148,7 +148,7 @@ func TestParse(t *testing.T) {
 			rt := reflect.TypeOf(tc.want)
 			rv := reflect.New(rt)
 
-			haveErr := Parse(tc.val, rv)
+			haveErr := UnmarshalReflect(tc.val, rv)
 			assert.Equal(t, tc.want, rv.Elem().Interface())
 
 			if tc.wantErr != nil {
@@ -162,7 +162,7 @@ func TestParse(t *testing.T) {
 
 func TestParseFunc_Exec(t *testing.T) {
 	typ := reflect.TypeOf(time.Nanosecond)
-	parseFunc := ParseFunc(parseDuration)
+	parseFunc := UnmarshalFunc(unmarshalDuration)
 
 	t.Parallel()
 	t.Run("value value", func(t *testing.T) {

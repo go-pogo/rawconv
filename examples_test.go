@@ -24,7 +24,7 @@ func ExampleUnmarshal() {
 
 func ExampleParse() {
 	var website *url.URL
-	if err := Parse("https://example.com", reflect.ValueOf(&website)); err != nil {
+	if err := UnmarshalReflect("https://example.com", reflect.ValueOf(&website)); err != nil {
 		panic(err)
 	}
 
@@ -37,15 +37,15 @@ func ExampleParser_Parse() {
 		something string
 	}
 
-	var parser Parser
-	parser.Register(reflect.TypeOf(myType{}), func(val Value, dest interface{}) error {
+	var u Unmarshaler
+	u.Register(reflect.TypeOf(myType{}), func(val Value, dest interface{}) error {
 		mt := dest.(*myType)
 		mt.something = val.String()
 		return nil
 	})
 
 	var mt myType
-	if err := parser.Parse("some value", reflect.ValueOf(&mt)); err != nil {
+	if err := u.Unmarshal("some value", reflect.ValueOf(&mt)); err != nil {
 		panic(err)
 	}
 

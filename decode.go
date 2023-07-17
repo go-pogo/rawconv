@@ -34,8 +34,6 @@ func (e *UnsupportedTypeError) Error() string {
 	return "type `" + e.Type.String() + "` is not supported"
 }
 
-var defaultParser = &Parser{root: true}
-
 // Unmarshal Value val to any of the supported types.
 func Unmarshal(val Value, v interface{}) error {
 	rv := reflect.ValueOf(v)
@@ -43,38 +41,46 @@ func Unmarshal(val Value, v interface{}) error {
 		return errors.WithKind(ErrPointerExpected, InvalidActionError)
 	}
 
-	return defaultParser.parse(val, rv)
+	return unmarshaler.unmarshal(val, rv)
 }
 
-type ParseFunc func(val Value, dest interface{}) error
+// UnmarshalReflect tries to unmarshal Value v to a supported type which matches
+// dest, and sets the parsed value to it.
+func UnmarshalReflect(v Value, dest reflect.Value) error {
+	return unmarshaler.Unmarshal(v, dest)
+}
+
+type UnmarshalFunc func(val Value, dest interface{}) error
+
+var unmarshaler = &Unmarshaler{root: true}
+
+type Unmarshaler struct {
+	root  bool
+	types map[reflect.Kind]map[reflect.Type]int
+	funcs []UnmarshalFunc
+}
 
 func unmarshalText(val Value, dest interface{}) error {
 	return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
 }
 
-type Parser struct {
-	root  bool
-	types map[reflect.Kind]map[reflect.Type]int
-	funcs []ParseFunc
-}
-
 func init() {
 	// interfaces
-	Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
+	unmarshaler.Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
 
 	// common types
-	Register(reflect.TypeOf(time.Nanosecond), parseDuration)
-	Register(reflect.TypeOf(url.URL{}), parseUrl)
+	unmarshaler.Register(reflect.TypeOf(time.Nanosecond), unmarshalDuration)
+	unmarshaler.Register(reflect.TypeOf(url.URL{}), unmarshalUrl)
 }
 
 // Register ParseFunc for typ, making it available for Unmarshal, Parse and
 // any Parser.
-func Register(typ reflect.Type, fn ParseFunc) { defaultParser.Register(typ, fn) }
+func Register(typ reflect.Type, fn UnmarshalFunc) { unmarshaler.Register(typ, fn) }
 
 const panicUnsupportedKind = "unsupported kind"
 
-// Register ParseFunc for typ but only for this Parser.
-func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
+// Register UnmarshalFunc for typ but only for this Unmarshaler.
+func (u *Unmarshaler) Register(typ reflect.Type, fn UnmarshalFunc) *Unmarshaler {
 	k := typ.Kind()
 	if k == reflect.Invalid ||
 		k == reflect.Uintptr ||
@@ -86,59 +92,57 @@ func (p *Parser) Register(typ reflect.Type, fn ParseFunc) *Parser {
 		panic(panicUnsupportedKind)
 	}
 
-	if p.types == nil {
-		p.types = make(map[reflect.Kind]map[reflect.Type]int, 3)
+	if u.types == nil {
+		u.types = make(map[reflect.Kind]map[reflect.Type]int, 3)
 	}
-	if p.funcs == nil {
-		p.funcs = make([]ParseFunc, 0, 2)
+	if u.funcs == nil {
+		u.funcs = make([]UnmarshalFunc, 0, 2)
 	}
 
-	if _, ok := p.types[k]; !ok {
-		p.types[k] = map[reflect.Type]int{typ: len(p.funcs)}
+	if _, ok := u.types[k]; !ok {
+		u.types[k] = map[reflect.Type]int{typ: len(u.funcs)}
 	} else {
-		p.types[k][typ] = len(p.funcs)
+		u.types[k][typ] = len(u.funcs)
 	}
 
-	p.funcs = append(p.funcs, fn)
-	return p
+	u.funcs = append(u.funcs, fn)
+	return u
 }
 
-// Func returns the globally registered ParseFunc for reflect.Type typ or nil
-// if there is none registered with Register.
-func Func(typ reflect.Type) ParseFunc {
-	return defaultParser.Func(typ)
-}
+// Func returns the globally registered UnmarshalFunc for reflect.Type typ or
+// nil if there is none registered with Register.
+func Func(typ reflect.Type) UnmarshalFunc { return unmarshaler.Func(typ) }
 
-// Func returns the (globally) registered ParseFunc for reflect.Type typ or nil
-// if there is none registered with Register.
-func (p *Parser) Func(typ reflect.Type) ParseFunc {
-	if p.funcs == nil {
-		if p.root {
+// Func returns the (globally) registered UnmarshalFunc for reflect.Type typ or nil
+// if there is none registered with RegisterType.
+func (u *Unmarshaler) Func(typ reflect.Type) UnmarshalFunc {
+	if u.funcs == nil {
+		if u.root {
 			return nil
 		}
 
 		// no custom ParseFunc registered for this Parser,
 		// act like we're defaultParser...
-		return defaultParser.Func(typ)
+		return unmarshaler.Func(typ)
 	}
 
-	fn := p.getFunc(typ)
+	fn := u.getFunc(typ)
 	if fn == nil && typ.Kind() != reflect.Ptr {
-		fn = p.getFuncFromImpl(reflect.New(typ).Type())
+		fn = u.getFuncFromImpl(reflect.New(typ).Type())
 	}
 	return fn
 }
 
-func (p *Parser) getFunc(typ reflect.Type) ParseFunc {
-	if fn := p.getFuncFromType(typ); fn != nil {
+func (u *Unmarshaler) getFunc(typ reflect.Type) UnmarshalFunc {
+	if fn := u.getFuncFromType(typ); fn != nil {
 		return fn
 	}
 
 	if typ.Kind() == reflect.Ptr {
-		if fn := p.getFunc(typ.Elem()); fn != nil {
+		if fn := u.getFunc(typ.Elem()); fn != nil {
 			return fn
 		}
-		if fn := p.getFuncFromImpl(typ); fn != nil {
+		if fn := u.getFuncFromImpl(typ); fn != nil {
 			return fn
 		}
 	}
@@ -146,27 +150,27 @@ func (p *Parser) getFunc(typ reflect.Type) ParseFunc {
 	return nil
 }
 
-func (p *Parser) getFuncFromType(typ reflect.Type) ParseFunc {
-	if kind, ok := p.types[typ.Kind()]; ok {
+func (u *Unmarshaler) getFuncFromType(typ reflect.Type) UnmarshalFunc {
+	if kind, ok := u.types[typ.Kind()]; ok {
 		if i, ok := kind[typ]; ok {
-			return p.getFuncFromIndex(i)
+			return u.getFuncFromIndex(i)
 		}
 	}
-	if !p.root {
-		return defaultParser.getFuncFromType(typ)
+	if !u.root {
+		return unmarshaler.getFuncFromType(typ)
 	}
 
 	return nil
 }
 
-func (p *Parser) getFuncFromImpl(typ reflect.Type) ParseFunc {
-	for u, i := range p.types[reflect.Interface] {
-		if typ.Implements(u) {
-			return p.getFuncFromIndex(i)
+func (u *Unmarshaler) getFuncFromImpl(typ reflect.Type) UnmarshalFunc {
+	for x, i := range u.types[reflect.Interface] {
+		if typ.Implements(x) {
+			return u.getFuncFromIndex(i)
 		}
 	}
-	if !p.root {
-		return defaultParser.getFuncFromImpl(typ)
+	if !u.root {
+		return unmarshaler.getFuncFromImpl(typ)
 	}
 
 	return nil
@@ -174,29 +178,25 @@ func (p *Parser) getFuncFromImpl(typ reflect.Type) ParseFunc {
 
 const panicInvalidFuncIndex = "parseval.Parser: invalid index, func must exist!"
 
-func (p *Parser) getFuncFromIndex(i int) ParseFunc {
-	if i >= len(p.funcs) {
+func (u *Unmarshaler) getFuncFromIndex(i int) UnmarshalFunc {
+	if i >= len(u.funcs) {
 		panic(panicInvalidFuncIndex)
 	}
-	return p.funcs[i]
+	return u.funcs[i]
 }
 
-// Parse Value v to any of the supported types and set its value to
-// reflect.Value dest.
-func Parse(v Value, dest reflect.Value) error { return defaultParser.Parse(v, dest) }
-
-// Parse Value v to any of the supported types and set its value to
-// reflect.Value dest.
-func (p *Parser) Parse(v Value, dest reflect.Value) error {
+// Unmarshal tries to unmarshal Value v to a supported type which matches dest,
+// and sets the parsed value to it.
+func (u *Unmarshaler) Unmarshal(v Value, dest reflect.Value) error {
 	if dest.Kind() != reflect.Ptr && !dest.CanSet() {
 		return errors.New(ErrUnableToSet)
 	}
-	return p.parse(v, dest)
+	return u.unmarshal(v, dest)
 }
 
-func (p *Parser) parse(v Value, dest reflect.Value) error {
-	if parseFn := p.Func(dest.Type()); parseFn != nil {
-		return parseFn.Exec(v, dest)
+func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
+	if unmarshalFn := u.Func(dest.Type()); unmarshalFn != nil {
+		return unmarshalFn.Exec(v, dest)
 	}
 
 	if v.Empty() {
@@ -248,16 +248,16 @@ func (p *Parser) parse(v Value, dest reflect.Value) error {
 	return errors.WithStack(&UnsupportedTypeError{Type: ot})
 }
 
-// Exec executes the ParseFunc by taken the address of dest, and passing it as
-// an interface to ParseFunc. It will return an error when the address of
+// Exec executes the UnmarshalFunc by taking the address of dest, and passing it
+// as an interface to UnmarshalFunc. It will return an error when the address of
 // reflect.Value dest cannot be taken, or when it is unable to set.
-// Any error returned by ParseFunc is wrapped with ParseError.
-func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
+// Any error returned by UnmarshalFunc is wrapped with ParseError.
+func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
 	if dest.Kind() != reflect.Ptr {
 		if !dest.CanAddr() {
 			return errors.WithKind(ErrUnableToAddr, InvalidActionError)
 		}
-		return fn.exec(val, dest.Addr())
+		return fn.exec(v, dest.Addr())
 	}
 
 	var err error
@@ -270,10 +270,10 @@ func (fn ParseFunc) Exec(val Value, dest reflect.Value) error {
 		}
 	}
 
-	return fn.exec(val, dest)
+	return fn.exec(v, dest)
 }
 
-func (fn ParseFunc) exec(val Value, dest reflect.Value) error {
+func (fn UnmarshalFunc) exec(val Value, dest reflect.Value) error {
 	if err := fn(val, dest.Interface()); err != nil {
 		if errors.GetKind(err) == errors.UnknownKind {
 			return errors.WithKind(err, ParseError)
