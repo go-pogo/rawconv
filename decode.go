@@ -66,11 +66,11 @@ func unmarshalText(val Value, dest interface{}) error {
 
 func init() {
 	// interfaces
-	unmarshaler.Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
+	Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
 
 	// common types
-	unmarshaler.Register(reflect.TypeOf(time.Nanosecond), unmarshalDuration)
-	unmarshaler.Register(reflect.TypeOf(url.URL{}), unmarshalUrl)
+	Register(reflect.TypeOf(time.Nanosecond), unmarshalDuration)
+	Register(reflect.TypeOf(url.URL{}), unmarshalUrl)
 }
 
 // Register ParseFunc for typ, making it available for Unmarshal, Parse and
