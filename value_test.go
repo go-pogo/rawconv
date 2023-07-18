@@ -21,7 +21,7 @@ func TestValue(t *testing.T) {
 		"int":      {"100", "+33", "-349"},
 		"float":    {"1.1", "0.59999", "22.564856"},
 		"duration": {"10s", "2h13m12s"},
-		"url":      {"http://foo.bar", "ftp://user@qux.xoo"},
+		"url":      {"https://foo.bar", "ftp://user@qux.xoo"},
 	}
 
 	type prepareFunc func(s string) (interface{}, error)
