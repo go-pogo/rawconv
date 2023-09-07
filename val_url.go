@@ -18,6 +18,7 @@ func (v Value) Url() (*url.URL, error) {
 	return x, nil
 }
 
+// UrlVar sets the value p points to using Url.
 func (v Value) UrlVar(p *url.URL) error {
 	x, err := v.Url()
 	if err != nil {

@@ -15,6 +15,7 @@ func (v Value) Duration() (time.Duration, error) {
 	return x, errors.WithKind(err, ParseError)
 }
 
+// DurationVar sets the value p points to using Duration.
 func (v Value) DurationVar(p *time.Duration) (err error) {
 	*p, err = v.Duration()
 	return

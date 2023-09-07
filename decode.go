@@ -26,6 +26,7 @@ type UnsupportedTypeError struct {
 }
 
 func (e *UnsupportedTypeError) Is(err error) bool {
+	//goland:noinspection GoTypeAssertionOnErrors
 	t, ok := err.(*UnsupportedTypeError)
 	return ok && e.Type == t.Type
 }
@@ -34,7 +35,20 @@ func (e *UnsupportedTypeError) Error() string {
 	return "type `" + e.Type.String() + "` is not supported"
 }
 
-// Unmarshal Value val to any of the supported types.
+// Unmarshal parses Value and stores the result in the value pointed to by v.
+// If v is nil or not a pointer, Unmarshal returns an ErrPointerExpected error.
+// If v is not a supported type an UnsupportedTypeError is returned.
+// By default, the following types are supported:
+// - encoding.TextUnmarshaler
+// - time.Duration
+// - url.URL
+// - string
+// - bool
+// - int, int8, int16, int32, int64
+// - uint, uint8, uint16, uint32, uint64
+// - float32, float64
+// - complex64, complex128
+// See Register for adding additional (custom) types.
 func Unmarshal(val Value, v interface{}) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -44,14 +58,16 @@ func Unmarshal(val Value, v interface{}) error {
 	return unmarshaler.unmarshal(val, rv)
 }
 
-// UnmarshalReflect tries to unmarshal Value v to a supported type which matches
-// dest, and sets the parsed value to it.
-func UnmarshalReflect(v Value, dest reflect.Value) error {
-	return unmarshaler.Unmarshal(v, dest)
+// UnmarshalReflect tries to unmarshal Value to a supported type which matches
+// the type of v, and sets the parsed value to it. See Unmarshal for additional
+// details.
+func UnmarshalReflect(val Value, v reflect.Value) error {
+	return unmarshaler.Unmarshal(val, v)
 }
 
 type UnmarshalFunc func(val Value, dest interface{}) error
 
+// unmarshaler is the global root Unmarshaler.
 var unmarshaler = &Unmarshaler{root: true}
 
 type Unmarshaler struct {
@@ -73,13 +89,13 @@ func init() {
 	Register(reflect.TypeOf(url.URL{}), unmarshalUrl)
 }
 
-// Register ParseFunc for typ, making it available for Unmarshal, Parse and
-// any Parser.
+// Register the UnmarshalFunc for typ, making it globally available for
+// Unmarshal, UnmarshalReflect and any Unmarshaler.
 func Register(typ reflect.Type, fn UnmarshalFunc) { unmarshaler.Register(typ, fn) }
 
-const panicUnsupportedKind = "unsupported kind"
+const panicUnsupportedKind = "parseval: unsupported kind"
 
-// Register UnmarshalFunc for typ but only for this Unmarshaler.
+// Register the UnmarshalFunc for typ but only for this Unmarshaler.
 func (u *Unmarshaler) Register(typ reflect.Type, fn UnmarshalFunc) *Unmarshaler {
 	k := typ.Kind()
 	if k == reflect.Invalid ||
@@ -113,16 +129,13 @@ func (u *Unmarshaler) Register(typ reflect.Type, fn UnmarshalFunc) *Unmarshaler 
 // nil if there is none registered with Register.
 func Func(typ reflect.Type) UnmarshalFunc { return unmarshaler.Func(typ) }
 
-// Func returns the (globally) registered UnmarshalFunc for reflect.Type typ or nil
-// if there is none registered with RegisterType.
+// Func returns the (globally) registered UnmarshalFunc for reflect.Type typ or
+// nil if there is none registered with Register.
 func (u *Unmarshaler) Func(typ reflect.Type) UnmarshalFunc {
 	if u.funcs == nil {
 		if u.root {
 			return nil
 		}
-
-		// no custom ParseFunc registered for this Parser,
-		// act like we're defaultParser...
 		return unmarshaler.Func(typ)
 	}
 
@@ -185,13 +198,14 @@ func (u *Unmarshaler) getFuncFromIndex(i int) UnmarshalFunc {
 	return u.funcs[i]
 }
 
-// Unmarshal tries to unmarshal Value v to a supported type which matches dest,
-// and sets the parsed value to it.
-func (u *Unmarshaler) Unmarshal(v Value, dest reflect.Value) error {
-	if dest.Kind() != reflect.Ptr && !dest.CanSet() {
+// Unmarshal tries to unmarshal Value to a supported type which matches the
+// type of v, and sets the parsed value to it. See Unmarshal for additional
+// details.
+func (u *Unmarshaler) Unmarshal(val Value, v reflect.Value) error {
+	if v.Kind() != reflect.Ptr && !v.CanSet() {
 		return errors.New(ErrUnableToSet)
 	}
-	return u.unmarshal(v, dest)
+	return u.unmarshal(val, v)
 }
 
 func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
