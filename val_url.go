@@ -28,8 +28,8 @@ func (v Value) UrlVar(p *url.URL) error {
 	return nil
 }
 
-func unmarshalUrl(val Value, dest interface{}) error {
-	if val.Empty() {
+func unmarshalUrl(val Value, dest any) error {
+	if val.IsEmpty() {
 		return nil
 	}
 

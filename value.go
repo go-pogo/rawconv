@@ -31,8 +31,8 @@ func errKind(err error) errors.Kind {
 //	boolVal, err := parseval.Value("true").Bool()
 type Value string
 
-// Empty indicates if Value is an empty string.
-func (v Value) Empty() bool { return string(v) == "" }
+// IsEmpty indicates if Value is an empty string.
+func (v Value) IsEmpty() bool { return string(v) == "" }
 
 func (v Value) GoString() string { return `parseval.Value("` + v.String() + `")` }
 

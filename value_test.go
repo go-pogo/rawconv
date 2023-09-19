@@ -260,9 +260,9 @@ func TestValue(t *testing.T) {
 	}
 }
 
-func TestValue_Empty(t *testing.T) {
-	assert.True(t, Value("").Empty())
-	assert.False(t, Value("0").Empty())
+func TestValue_IsEmpty(t *testing.T) {
+	assert.True(t, Value("").IsEmpty())
+	assert.False(t, Value("0").IsEmpty())
 }
 
 func TestValue_GoString(t *testing.T) {

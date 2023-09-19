@@ -21,8 +21,8 @@ func (v Value) DurationVar(p *time.Duration) (err error) {
 	return
 }
 
-func unmarshalDuration(val Value, dest interface{}) error {
-	if val.Empty() {
+func unmarshalDuration(val Value, dest any) error {
+	if val.IsEmpty() {
 		return nil
 	}
 

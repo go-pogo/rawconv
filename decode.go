@@ -213,7 +213,7 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
 		return unmarshalFn.Exec(v, dest)
 	}
 
-	if v.Empty() {
+	if v.IsEmpty() {
 		return nil
 	}
 
