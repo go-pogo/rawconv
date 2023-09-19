@@ -22,13 +22,37 @@ func ExampleUnmarshal() {
 	// Output: 1h2m3s
 }
 
-func ExampleUnmarshalReflect() {
-	var website *url.URL
-	if err := UnmarshalReflect("https://example.com", reflect.ValueOf(&website)); err != nil {
+func ExampleMarshal() {
+	duration := time.Hour + (time.Minute * 2) + (time.Second * 3)
+	val, err := Marshal(duration)
+	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println(website.String())
+	fmt.Println(val.String())
+	// Output: 1h2m3s
+}
+
+func ExampleUnmarshaler() {
+	var u Unmarshaler
+	var target *url.URL
+	if err := u.Unmarshal("https://example.com", reflect.ValueOf(&target)); err != nil {
+		panic(err)
+	}
+
+	fmt.Println(target.String())
+	// Output: https://example.com
+}
+
+func ExampleMarshaler() {
+	var m Marshaler
+	target, _ := url.ParseRequestURI("https://example.com")
+	val, err := m.Marshal(reflect.ValueOf(target))
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println(val.String())
 	// Output: https://example.com
 }
 
@@ -38,18 +62,18 @@ func ExampleUnmarshaler_Register() {
 	}
 
 	var u Unmarshaler
-	u.Register(reflect.TypeOf(myType{}), func(val Value, dest interface{}) error {
+	u.Register(reflect.TypeOf(myType{}), func(val Value, dest any) error {
 		mt := dest.(*myType)
 		mt.something = val.String()
 		return nil
 	})
 
-	var mt myType
-	if err := u.Unmarshal("some value", reflect.ValueOf(&mt)); err != nil {
+	var target myType
+	if err := u.Unmarshal("some value", reflect.ValueOf(&target)); err != nil {
 		panic(err)
 	}
 
-	spew.Dump(mt)
+	spew.Dump(target)
 	// Output:
 	// (parseval.myType) {
 	//  something: (string) (len=10) "some value"

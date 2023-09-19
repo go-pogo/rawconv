@@ -28,3 +28,7 @@ func unmarshalDuration(val Value, dest any) error {
 
 	return val.DurationVar(dest.(*time.Duration))
 }
+
+func marshalDuration(v any) (string, error) {
+	return v.(time.Duration).String(), nil
+}

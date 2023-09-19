@@ -35,3 +35,8 @@ func unmarshalUrl(val Value, dest any) error {
 
 	return val.UrlVar(dest.(*url.URL))
 }
+
+func marshalUrl(v any) (string, error) {
+	u := v.(url.URL)
+	return u.String(), nil
+}

@@ -4,29 +4,8 @@
 
 package parseval
 
-import (
-	"github.com/go-pogo/errors"
-	"strconv"
-)
-
-const (
-	ParseError      errors.Kind = "parse error"
-	ValidationError errors.Kind = "validation error"
-)
-
-func errKind(err error) errors.Kind {
-	if ne, ok := err.(*strconv.NumError); ok {
-		if ne.Err == strconv.ErrRange {
-			return ValidationError
-		} else {
-			return ParseError
-		}
-	}
-	return errors.UnknownKind
-}
-
-// Value is a textual representation of a value which is able to cast itself to
-// any of the supported types using its corresponding method.
+// Value is a textual representation of a raw value which is able to cast itself
+// to any of the supported types using its corresponding method.
 //
 //	boolVal, err := parseval.Value("true").Bool()
 type Value string

@@ -5,12 +5,8 @@
 package parseval
 
 import (
-	"encoding"
-	"net/url"
-	"reflect"
-	"time"
-
 	"github.com/go-pogo/errors"
+	"reflect"
 )
 
 const (
@@ -18,22 +14,10 @@ const (
 	ErrUnableToSet     errors.Msg = "unable to set value"
 	ErrUnableToAddr    errors.Msg = "unable to addr value"
 
-	InvalidActionError errors.Kind = "invalid action"
+	// ImplementationError indicates the programmer made a mistake implementing
+	// the package and this should be fixed.
+	ImplementationError errors.Kind = "implementation error"
 )
-
-type UnsupportedTypeError struct {
-	Type reflect.Type
-}
-
-func (e *UnsupportedTypeError) Is(err error) bool {
-	//goland:noinspection GoTypeAssertionOnErrors
-	t, ok := err.(*UnsupportedTypeError)
-	return ok && e.Type == t.Type
-}
-
-func (e *UnsupportedTypeError) Error() string {
-	return "type `" + e.Type.String() + "` is not supported"
-}
 
 // Unmarshal parses Value and stores the result in the value pointed to by v.
 // If v is nil or not a pointer, Unmarshal returns an ErrPointerExpected error.
@@ -48,154 +32,47 @@ func (e *UnsupportedTypeError) Error() string {
 // - uint, uint8, uint16, uint32, uint64
 // - float32, float64
 // - complex64, complex128
-// See Register for adding additional (custom) types.
-func Unmarshal(val Value, v interface{}) error {
+// See RegisterUnmarshalFunc for adding additional (custom) types.
+func Unmarshal(val Value, v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.WithKind(ErrPointerExpected, InvalidActionError)
+		return errors.WithKind(ErrPointerExpected, ImplementationError)
 	}
 
 	return unmarshaler.unmarshal(val, rv)
 }
 
-// UnmarshalReflect tries to unmarshal Value to a supported type which matches
-// the type of v, and sets the parsed value to it. See Unmarshal for additional
-// details.
-func UnmarshalReflect(val Value, v reflect.Value) error {
-	return unmarshaler.Unmarshal(val, v)
-}
+// UnmarshalFunc is a function which can unmarshal a Value to any type.
+// Argument dest is always a pointer to the value to unmarshal to.
+type UnmarshalFunc func(val Value, dest any) error
 
-type UnmarshalFunc func(val Value, dest interface{}) error
+// GetUnmarshalFunc returns the globally registered UnmarshalFunc for
+// reflect.Type typ or nil if there is none registered with
+// RegisterUnmarshalFunc.
+func GetUnmarshalFunc(typ reflect.Type) UnmarshalFunc { return unmarshaler.Func(typ) }
 
 // unmarshaler is the global root Unmarshaler.
-var unmarshaler = &Unmarshaler{root: true}
+var unmarshaler Unmarshaler
 
 type Unmarshaler struct {
-	root  bool
-	types map[reflect.Kind]map[reflect.Type]int
-	funcs []UnmarshalFunc
+	register register[UnmarshalFunc]
 }
-
-func unmarshalText(val Value, dest interface{}) error {
-	return dest.(encoding.TextUnmarshaler).UnmarshalText(val.Bytes())
-}
-
-func init() {
-	// interfaces
-	Register(reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem(), unmarshalText)
-
-	// common types
-	Register(reflect.TypeOf(time.Nanosecond), unmarshalDuration)
-	Register(reflect.TypeOf(url.URL{}), unmarshalUrl)
-}
-
-// Register the UnmarshalFunc for typ, making it globally available for
-// Unmarshal, UnmarshalReflect and any Unmarshaler.
-func Register(typ reflect.Type, fn UnmarshalFunc) { unmarshaler.Register(typ, fn) }
-
-const panicUnsupportedKind = "parseval: unsupported kind"
 
 // Register the UnmarshalFunc for typ but only for this Unmarshaler.
 func (u *Unmarshaler) Register(typ reflect.Type, fn UnmarshalFunc) *Unmarshaler {
-	k := typ.Kind()
-	if k == reflect.Invalid ||
-		k == reflect.Uintptr ||
-		k == reflect.Chan ||
-		k == reflect.Func ||
-		k == reflect.UnsafePointer ||
-		// not yet supported
-		k == reflect.Array || k == reflect.Map || k == reflect.Slice {
-		panic(panicUnsupportedKind)
-	}
-
-	if u.types == nil {
-		u.types = make(map[reflect.Kind]map[reflect.Type]int, 3)
-	}
-	if u.funcs == nil {
-		u.funcs = make([]UnmarshalFunc, 0, 2)
-	}
-
-	if _, ok := u.types[k]; !ok {
-		u.types[k] = map[reflect.Type]int{typ: len(u.funcs)}
-	} else {
-		u.types[k][typ] = len(u.funcs)
-	}
-
-	u.funcs = append(u.funcs, fn)
+	u.register.add(typ, fn)
 	return u
 }
 
-// Func returns the globally registered UnmarshalFunc for reflect.Type typ or
-// nil if there is none registered with Register.
-func Func(typ reflect.Type) UnmarshalFunc { return unmarshaler.Func(typ) }
-
 // Func returns the (globally) registered UnmarshalFunc for reflect.Type typ or
-// nil if there is none registered with Register.
+// nil if there is none registered with Register or RegisterUnmarshalFunc.
 func (u *Unmarshaler) Func(typ reflect.Type) UnmarshalFunc {
-	if u.funcs == nil {
-		if u.root {
-			return nil
-		}
+	if !u.register.initialized() {
+		// unmarshaler is always initialized
 		return unmarshaler.Func(typ)
 	}
 
-	fn := u.getFunc(typ)
-	if fn == nil && typ.Kind() != reflect.Ptr {
-		fn = u.getFuncFromImpl(reflect.New(typ).Type())
-	}
-	return fn
-}
-
-func (u *Unmarshaler) getFunc(typ reflect.Type) UnmarshalFunc {
-	if fn := u.getFuncFromType(typ); fn != nil {
-		return fn
-	}
-
-	if typ.Kind() == reflect.Ptr {
-		if fn := u.getFunc(typ.Elem()); fn != nil {
-			return fn
-		}
-		if fn := u.getFuncFromImpl(typ); fn != nil {
-			return fn
-		}
-	}
-
-	return nil
-}
-
-func (u *Unmarshaler) getFuncFromType(typ reflect.Type) UnmarshalFunc {
-	if kind, ok := u.types[typ.Kind()]; ok {
-		if i, ok := kind[typ]; ok {
-			return u.getFuncFromIndex(i)
-		}
-	}
-	if !u.root {
-		return unmarshaler.getFuncFromType(typ)
-	}
-
-	return nil
-}
-
-func (u *Unmarshaler) getFuncFromImpl(typ reflect.Type) UnmarshalFunc {
-	for x, i := range u.types[reflect.Interface] {
-		if typ.Implements(x) {
-			return u.getFuncFromIndex(i)
-		}
-	}
-	if !u.root {
-		return unmarshaler.getFuncFromImpl(typ)
-	}
-
-	return nil
-}
-
-const panicInvalidFuncIndex = "parseval.Parser: invalid index, func must exist!"
-
-func (u *Unmarshaler) getFuncFromIndex(i int) UnmarshalFunc {
-	if i >= len(u.funcs) {
-		panic(panicInvalidFuncIndex)
-	}
-	return u.funcs[i]
+	return u.register.find(typ)
 }
 
 // Unmarshal tries to unmarshal Value to a supported type which matches the
@@ -209,8 +86,8 @@ func (u *Unmarshaler) Unmarshal(val Value, v reflect.Value) error {
 }
 
 func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
-	if unmarshalFn := u.Func(dest.Type()); unmarshalFn != nil {
-		return unmarshalFn.Exec(v, dest)
+	if fn := u.Func(dest.Type()); fn != nil {
+		return fn.Exec(v, dest)
 	}
 
 	if v.IsEmpty() {
@@ -269,7 +146,7 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
 func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
 	if dest.Kind() != reflect.Ptr {
 		if !dest.CanAddr() {
-			return errors.WithKind(ErrUnableToAddr, InvalidActionError)
+			return errors.WithKind(ErrUnableToAddr, ImplementationError)
 		}
 		return fn.exec(v, dest.Addr())
 	}
