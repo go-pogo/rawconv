@@ -1,4 +1,4 @@
-module github.com/go-pogo/parseval
+module github.com/go-pogo/rawconv
 
 go 1.18
 

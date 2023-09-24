@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package parseval
+package rawconv
 
 import (
 	"encoding"
@@ -55,7 +55,7 @@ type register[T interface{ MarshalFunc | UnmarshalFunc }] struct {
 
 func (r *register[T]) initialized() bool { return r.types != nil && r.funcs != nil }
 
-const panicUnsupportedKind = "parseval: unsupported kind"
+const panicUnsupportedKind = "rawconv: unsupported kind"
 
 func (r *register[T]) add(typ reflect.Type, fn T) {
 	k := typ.Kind()
@@ -127,7 +127,7 @@ func (r *register[T]) getFromImpl(typ reflect.Type) T {
 	return nil
 }
 
-const panicInvalidFuncIndex = "parseval: invalid index, func must exist!"
+const panicInvalidFuncIndex = "rawconv: invalid index, func must exist!"
 
 func (r *register[T]) getFromIndex(i int) T {
 	if i >= len(r.funcs) {

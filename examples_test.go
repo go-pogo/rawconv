@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package parseval
+package rawconv
 
 import (
 	"fmt"
@@ -75,7 +75,7 @@ func ExampleUnmarshaler_Register() {
 
 	spew.Dump(target)
 	// Output:
-	// (parseval.myType) {
+	// (rawconv.myType) {
 	//  something: (string) (len=10) "some value"
 	// }
 }

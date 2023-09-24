@@ -2,18 +2,18 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package parseval
+package rawconv
 
 // Value is a textual representation of a raw value which is able to cast itself
 // to any of the supported types using its corresponding method.
 //
-//	boolVal, err := parseval.Value("true").Bool()
+//	boolVal, err := rawconv.Value("true").Bool()
 type Value string
 
 // IsEmpty indicates if Value is an empty string.
 func (v Value) IsEmpty() bool { return string(v) == "" }
 
-func (v Value) GoString() string { return `parseval.Value("` + v.String() + `")` }
+func (v Value) GoString() string { return `rawconv.Value("` + v.String() + `")` }
 
 // String returns Value as a raw string.
 func (v Value) String() string { return string(v) }

@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style
 // license that can be found in the LICENSE file.
 
-package parseval
+package rawconv
 
 import (
 	"github.com/go-pogo/errors"
@@ -266,7 +266,7 @@ func TestValue_IsEmpty(t *testing.T) {
 }
 
 func TestValue_GoString(t *testing.T) {
-	assert.Equal(t, `parseval.Value("")`, Value("").GoString())
-	assert.Equal(t, `parseval.Value("0")`, Value("0").GoString())
-	assert.Equal(t, `parseval.Value("just some value")`, Value("just some value").GoString())
+	assert.Equal(t, `rawconv.Value("")`, Value("").GoString())
+	assert.Equal(t, `rawconv.Value("0")`, Value("0").GoString())
+	assert.Equal(t, `rawconv.Value("just some value")`, Value("just some value").GoString())
 }

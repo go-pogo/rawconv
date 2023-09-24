@@ -1,4 +1,4 @@
-package parseval
+package rawconv
 
 import (
 	"github.com/stretchr/testify/assert"
