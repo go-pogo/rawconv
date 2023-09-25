@@ -32,7 +32,7 @@ const (
 // - uint, uint8, uint16, uint32, uint64
 // - float32, float64
 // - complex64, complex128
-// See RegisterUnmarshalFunc for adding additional (custom) types.
+// Use RegisterUnmarshalFunc to add additional (custom) types.
 func Unmarshal(val Value, v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
@@ -54,6 +54,9 @@ func GetUnmarshalFunc(typ reflect.Type) UnmarshalFunc { return unmarshaler.Func(
 // unmarshaler is the global root Unmarshaler.
 var unmarshaler Unmarshaler
 
+// Unmarshaler is a type which can unmarshal a Value to any type that's
+// registered with Register. It wil always fallback to the global Unmarshaler
+// when a type is not registered.
 type Unmarshaler struct {
 	register register[UnmarshalFunc]
 }

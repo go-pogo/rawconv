@@ -5,9 +5,8 @@
 package rawconv
 
 import (
-	"strconv"
-
 	"github.com/go-pogo/errors"
+	"strconv"
 )
 
 // Bool tries to parse Value as a bool using strconv.ParseBool.

@@ -22,8 +22,8 @@ rawconv
 [doc-url]: https://pkg.go.dev/github.com/go-pogo/rawconv
 
 
-Package `rawconv` contains everything needed to create (custom) types which 
-can unmarshal raw string values to any type in Go.
+Package `rawconv` implements conversions to and from raw string representations 
+of any (custom) data types in Go.
 
 ```sh
 go get github.com/go-pogo/rawconv
@@ -32,6 +32,26 @@ go get github.com/go-pogo/rawconv
 ```go
 import "github.com/go-pogo/rawconv"
 ```
+
+## Basic conversions
+
+Basic conversions are done using the `strconv` package and are implemented as
+methods on the `Value` type. The following conversions are supported:
+- `string`
+- `bool`
+- `int`, `int8`, `int16`, `int32`, `int64`
+- `uint`, `uint8`, `uint16`, `uint32`, `uint64`
+- `float32`, `float64`
+- `complex64`, `complex128`
+- `time.Duration`
+- `url.URL`
+
+## Custom types
+
+Conversions for global custom types are done by registering a `MarshalFunc` and/or
+`UnmarshalFunc` using the `RegisterMarshalFunc` and `RegisterUnmarshalFunc` functions.
+It is also possible to use `Marshaler` and/or `Unmarshaler` if you do not want to
+expose the `MarshalFunc` or `UnmarshalFunc` implementations.
 
 ## Documentation
 

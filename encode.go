@@ -10,6 +10,19 @@ import (
 	"strconv"
 )
 
+// Marshal formats the value pointed to by v to a raw string Value.
+// If v is not a supported type an UnsupportedTypeError is returned.
+// By default, the following types are supported:
+// - encoding.TextUnmarshaler
+// - time.Duration
+// - url.URL
+// - string
+// - bool
+// - int, int8, int16, int32, int64
+// - uint, uint8, uint16, uint32, uint64
+// - float32, float64
+// - complex64, complex128
+// Use RegisterMarshalFunc to add additional (custom) types.
 func Marshal(v any) (Value, error) {
 	return marshaler.Marshal(reflect.ValueOf(v))
 }
@@ -22,6 +35,9 @@ func GetMarshalFunc(typ reflect.Type) MarshalFunc { return marshaler.Func(typ) }
 
 var marshaler Marshaler
 
+// Marshaler is a type which can marshal any reflect.Value to its raw string
+// representation as long as it's registered with Register. It wil always
+// fallback to the global Marshaler when a type is not registered.
 type Marshaler struct {
 	register register[MarshalFunc]
 }
@@ -81,6 +97,7 @@ func (m *Marshaler) Marshal(val reflect.Value) (Value, error) {
 	return "", errors.WithStack(&UnsupportedTypeError{Type: ot})
 }
 
+// Exec executes the MarshalFunc for the given reflect.Value.
 func (fn MarshalFunc) Exec(val reflect.Value) (Value, error) {
 	for val.Kind() == reflect.Ptr {
 		if val.IsNil() {
