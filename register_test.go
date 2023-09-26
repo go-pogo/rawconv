@@ -17,7 +17,7 @@ func TestGetMarshalFunc(t *testing.T) {
 	testRegisterFind(t, 1, func(typ reflect.Type) any { return GetMarshalFunc(typ) })
 }
 
-func testRegisterFind(t *testing.T, i int, haveFn func(reflect.Type) any) {
+func testRegisterFind(t *testing.T, i int, getFn func(reflect.Type) any) {
 	tests := []struct {
 		want  [2]uintptr
 		types []reflect.Type
@@ -60,7 +60,7 @@ func testRegisterFind(t *testing.T, i int, haveFn func(reflect.Type) any) {
 	for _, tc := range tests {
 		for _, typ := range tc.types {
 			t.Run(typ.String(), func(t *testing.T) {
-				have := haveFn(typ)
+				have := getFn(typ)
 				assert.Equal(t, tc.want[i], reflect.ValueOf(have).Pointer())
 			})
 		}

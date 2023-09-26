@@ -51,7 +51,7 @@ type UnmarshalFunc func(val Value, dest any) error
 // RegisterUnmarshalFunc.
 func GetUnmarshalFunc(typ reflect.Type) UnmarshalFunc { return unmarshaler.Func(typ) }
 
-// unmarshaler is the global root Unmarshaler.
+// unmarshaler is the global Unmarshaler.
 var unmarshaler Unmarshaler
 
 // Unmarshaler is a type which can unmarshal a Value to any type that's
@@ -70,12 +70,13 @@ func (u *Unmarshaler) Register(typ reflect.Type, fn UnmarshalFunc) *Unmarshaler 
 // Func returns the (globally) registered UnmarshalFunc for reflect.Type typ or
 // nil if there is none registered with Register or RegisterUnmarshalFunc.
 func (u *Unmarshaler) Func(typ reflect.Type) UnmarshalFunc {
-	if !u.register.initialized() {
-		// unmarshaler is always initialized
-		return unmarshaler.Func(typ)
+	if u.register.initialized() {
+		if fn := u.register.find(typ); fn != nil {
+			return fn
+		}
 	}
-
-	return u.register.find(typ)
+	// fallback to global unmarshaler
+	return unmarshaler.register.find(typ)
 }
 
 // Unmarshal tries to unmarshal Value to a supported type which matches the

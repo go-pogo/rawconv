@@ -33,6 +33,7 @@ type MarshalFunc func(v any) (string, error)
 // typ or nil if there is none registered with RegisterMarshalFunc.
 func GetMarshalFunc(typ reflect.Type) MarshalFunc { return marshaler.Func(typ) }
 
+// marshaler is the global Marshaler.
 var marshaler Marshaler
 
 // Marshaler is a type which can marshal any reflect.Value to its raw string
@@ -51,12 +52,13 @@ func (m *Marshaler) Register(typ reflect.Type, fn MarshalFunc) *Marshaler {
 // Func returns the (globally) registered MarshalFunc for reflect.Type typ or
 // nil if there is none registered with Register or RegisterMarshalFunc.
 func (m *Marshaler) Func(typ reflect.Type) MarshalFunc {
-	if !m.register.initialized() {
-		// marshaler is always initialized
-		return marshaler.Func(typ)
+	if m.register.initialized() {
+		if fn := m.register.find(typ); fn != nil {
+			return fn
+		}
 	}
-
-	return m.register.find(typ)
+	// fallback to global marshaler
+	return marshaler.register.find(typ)
 }
 
 // Marshal returns the string representation of the value.

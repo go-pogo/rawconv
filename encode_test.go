@@ -111,6 +111,14 @@ func TestMarshal(t *testing.T) {
 	}
 }
 
+func TestMarshaler_Func(t *testing.T) {
+	var m Marshaler
+	m.Register(reflect.TypeOf(t), func(any) (string, error) {
+		return "", nil
+	})
+	testRegisterFind(t, 1, func(typ reflect.Type) any { return m.Func(typ) })
+}
+
 func TestMarshalFunc_Exec(t *testing.T) {
 	wantErr := errors.New("some err")
 	_, haveErr := MarshalFunc(func(v any) (string, error) {

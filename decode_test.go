@@ -34,6 +34,14 @@ func TestUnmarshal(t *testing.T) {
 	}
 }
 
+func TestUnmarshaler_Func(t *testing.T) {
+	var u Unmarshaler
+	u.Register(reflect.TypeOf(t), func(Value, any) error {
+		return nil
+	})
+	testRegisterFind(t, 0, func(typ reflect.Type) any { return u.Func(typ) })
+}
+
 func TestUnmarshaler_Unmarshal(t *testing.T) {
 	timeVal, _ := time.Parse(time.RFC3339, "1997-08-29T13:37:00Z")
 	urlPtr, _ := url.ParseRequestURI("http://localhost/")
