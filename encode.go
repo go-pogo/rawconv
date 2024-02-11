@@ -7,7 +7,6 @@ package rawconv
 import (
 	"github.com/go-pogo/errors"
 	"reflect"
-	"strconv"
 )
 
 // Marshal formats the value pointed to by v to a raw string Value.
@@ -76,24 +75,25 @@ func (m *Marshaler) Marshal(val reflect.Value) (Value, error) {
 		val = val.Elem()
 	}
 
+	//goland:noinspection GoSwitchMissingCasesForIotaConsts
 	switch val.Kind() {
 	case reflect.String:
 		return Value(val.String()), nil
 
 	case reflect.Bool:
-		return Value(strconv.FormatBool(val.Bool())), nil
+		return ValueFromBool(val.Bool()), nil
 
 	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
-		return Value(strconv.FormatInt(val.Int(), 10)), nil
+		return ValueFromInt64(val.Int()), nil
 
 	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
-		return Value(strconv.FormatUint(val.Uint(), 10)), nil
+		return ValueFromUint64(val.Uint()), nil
 
 	case reflect.Float32, reflect.Float64:
-		return Value(strconv.FormatFloat(val.Float(), 'g', -1, val.Type().Bits())), nil
+		return ValueFromFloat64(val.Float()), nil
 
 	case reflect.Complex64, reflect.Complex128:
-		return Value(strconv.FormatComplex(val.Complex(), 'g', -1, val.Type().Bits())), nil
+		return ValueFromComplex128(val.Complex()), nil
 	}
 
 	return "", errors.WithStack(&UnsupportedTypeError{Type: ot})

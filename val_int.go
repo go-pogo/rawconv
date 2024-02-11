@@ -5,10 +5,34 @@
 package rawconv
 
 import (
-	"strconv"
-
 	"github.com/go-pogo/errors"
+	"strconv"
 )
+
+// ValueFromInt encodes v to a Value using strconv.FormatInt.
+func ValueFromInt(v int) Value {
+	return Value(strconv.FormatInt(int64(v), 10))
+}
+
+// ValueFromInt8 encodes v to a Value using strconv.FormatInt.
+func ValueFromInt8(v int8) Value {
+	return Value(strconv.FormatInt(int64(v), 10))
+}
+
+// ValueFromInt16 encodes v to a Value using strconv.FormatInt.
+func ValueFromInt16(v int16) Value {
+	return Value(strconv.FormatInt(int64(v), 10))
+}
+
+// ValueFromInt32 encodes v to a Value using strconv.FormatInt.
+func ValueFromInt32(v int32) Value {
+	return Value(strconv.FormatInt(int64(v), 10))
+}
+
+// ValueFromInt64 encodes v to a Value using strconv.FormatInt.
+func ValueFromInt64(v int64) Value {
+	return Value(strconv.FormatInt(v, 10))
+}
 
 // Int tries to parse Value as an int using strconv.ParseInt.
 func (v Value) Int() (int, error) {

@@ -10,6 +10,16 @@ import (
 	"github.com/go-pogo/errors"
 )
 
+// ValueFromComplex64 encodes v to a Value using strconv.FormatComplex.
+func ValueFromComplex64(v complex64) Value {
+	return Value(strconv.FormatComplex(complex128(v), 'g', -1, 64))
+}
+
+// ValueFromComplex128 encodes v to a Value using strconv.FormatComplex.
+func ValueFromComplex128(v complex128) Value {
+	return Value(strconv.FormatComplex(v, 'g', -1, 128))
+}
+
 // Complex64 tries to parse Value as a complex64 using strconv.ParseComplex.
 func (v Value) Complex64() (complex64, error) {
 	x, err := complexSize(v, 64)

@@ -5,10 +5,19 @@
 package rawconv
 
 import (
-	"strconv"
-
 	"github.com/go-pogo/errors"
+	"strconv"
 )
+
+// ValueFromFloat32 encodes v to a Value using strconv.FormatFloat.
+func ValueFromFloat32(v float32) Value {
+	return Value(strconv.FormatFloat(float64(v), 'g', -1, 32))
+}
+
+// ValueFromFloat64 encodes v to a Value using strconv.FormatFloat.
+func ValueFromFloat64(v float64) Value {
+	return Value(strconv.FormatFloat(v, 'g', -1, 64))
+}
 
 // Float32 tries to parse Value as a float32 using strconv.ParseFloat.
 func (v Value) Float32() (float32, error) {

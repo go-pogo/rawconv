@@ -9,6 +9,11 @@ import (
 	"strconv"
 )
 
+// ValueFromBool encodes v to a Value using strconv.FormatBool.
+func ValueFromBool(v bool) Value {
+	return Value(strconv.FormatBool(v))
+}
+
 // Bool tries to parse Value as a bool using strconv.ParseBool.
 // It accepts 1, t, T, TRUE, true, True, 0, f, F, FALSE, false, False.
 // Any other value returns an error.

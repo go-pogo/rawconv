@@ -7,6 +7,7 @@ package rawconv
 import (
 	"github.com/go-pogo/errors"
 	"github.com/stretchr/testify/assert"
+	"math"
 	"net/url"
 	"strconv"
 	"testing"
@@ -247,6 +248,7 @@ func TestValue(t *testing.T) {
 
 					if wantErr != nil {
 						k := errors.GetKind(haveErr)
+						//goland:noinspection GoDirectComparisonOfErrors
 						assert.True(t, k == ParseError || k == ValidationError, "Kind should match ParseError or ValidationError")
 					}
 				})
@@ -269,4 +271,74 @@ func TestValue_GoString(t *testing.T) {
 	assert.Equal(t, `rawconv.Value("")`, Value("").GoString())
 	assert.Equal(t, `rawconv.Value("0")`, Value("0").GoString())
 	assert.Equal(t, `rawconv.Value("just some value")`, Value("just some value").GoString())
+}
+
+func TestValueFromComplex64(t *testing.T) {
+	var want complex64 = 1 + 2i
+	have, haveErr := ValueFromComplex64(want).Complex64()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromFloat32(t *testing.T) {
+	var want float32 = math.Pi
+	have, haveErr := ValueFromFloat32(want).Float32()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromInt(t *testing.T) {
+	want := math.MinInt
+	have, haveErr := ValueFromInt(want).Int()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromInt8(t *testing.T) {
+	var want int8 = math.MaxInt8
+	have, haveErr := ValueFromInt8(want).Int8()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromInt16(t *testing.T) {
+	var want int16 = math.MinInt16
+	have, haveErr := ValueFromInt16(want).Int16()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromInt32(t *testing.T) {
+	var want int32 = math.MaxInt32
+	have, haveErr := ValueFromInt32(want).Int32()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromUint(t *testing.T) {
+	var want uint = math.MaxUint
+	have, haveErr := ValueFromUint(want).Uint()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromUint8(t *testing.T) {
+	var want uint8 = math.MaxUint8
+	have, haveErr := ValueFromUint8(want).Uint8()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromUint16(t *testing.T) {
+	var want uint16 = math.MaxUint16
+	have, haveErr := ValueFromUint16(want).Uint16()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
+}
+
+func TestValueFromUint32(t *testing.T) {
+	var want uint32 = math.MaxUint32
+	have, haveErr := ValueFromUint32(want).Uint32()
+	assert.Equal(t, want, have)
+	assert.Nil(t, haveErr)
 }

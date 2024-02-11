@@ -170,6 +170,7 @@ func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
 
 func (fn UnmarshalFunc) exec(val Value, dest reflect.Value) error {
 	if err := fn(val, dest.Interface()); err != nil {
+		//goland:noinspection GoDirectComparisonOfErrors
 		if errors.GetKind(err) == errors.UnknownKind {
 			return errors.WithKind(err, ParseError)
 		}
