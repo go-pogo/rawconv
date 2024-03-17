@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 	"time"
 )
@@ -22,36 +23,26 @@ func TestMarshal(t *testing.T) {
 		want    Value
 		wantErr error
 	}{
-		"unsupported": {
-			{
-				input:   nilChan,
-				wantErr: &UnsupportedTypeError{Type: reflect.TypeOf(nilChan)},
-			},
-		},
-
-		"string": {
-			{
-				input: "test",
-				want:  Value("test"),
-			},
-			{
-				input: ptr("test"),
-				want:  Value("test"),
-			},
-			{
-				input: (*string)(nil),
-			},
-		},
-		"bool": {
-			{
-				input: true,
-				want:  Value("true"),
-			},
-			{
-				input: ptr(false),
-				want:  Value("false"),
-			},
-		},
+		"unsupported": {{
+			input:   nilChan,
+			wantErr: &UnsupportedTypeError{Type: reflect.TypeOf(nilChan)},
+		}},
+		"string": {{
+			input: "test",
+			want:  Value("test"),
+		}, {
+			input: ptr("test"),
+			want:  Value("test"),
+		}, {
+			input: (*string)(nil),
+		}},
+		"bool": {{
+			input: true,
+			want:  Value("true"),
+		}, {
+			input: ptr(false),
+			want:  Value("false"),
+		}},
 		"int": {{
 			input: -123,
 			want:  Value("-123"),
@@ -68,7 +59,6 @@ func TestMarshal(t *testing.T) {
 			input: 123.456 + 789.123i,
 			want:  Value("(123.456+789.123i)"),
 		}},
-
 		"duration": {{
 			input: (time.Second * 70) + (time.Millisecond * 123),
 			want:  Value("1m10.123s"),
@@ -77,21 +67,24 @@ func TestMarshal(t *testing.T) {
 			input: time.Date(1997, 8, 29, 13, 37, 1, 0, time.UTC),
 			want:  Value("1997-08-29T13:37:01Z"),
 		}},
-
-		"url": {
-			{
-				input: &url.URL{Scheme: "http", Host: "localhost"},
-				want:  Value("http://localhost"),
-			},
-			{
-				input: (*url.URL)(nil),
-				want:  Value(""),
-			},
-		},
-
+		"url": {{
+			input: &url.URL{Scheme: "http", Host: "localhost"},
+			want:  Value("http://localhost"),
+		}, {
+			input: (*url.URL)(nil),
+			want:  Value(""),
+		}},
 		"ip": {{
 			input: net.IPv4(192, 168, 1, 1),
 			want:  Value("192.168.1.1"),
+		}},
+		"array": {{
+			input: [3]int{1, 2, 3},
+			want:  Value("1,2,3"),
+		}},
+		"slice": {{
+			input: []int{1, 2, 3},
+			want:  Value("1,2,3"),
 		}},
 	}
 
@@ -108,6 +101,37 @@ func TestMarshal(t *testing.T) {
 				}
 			})
 		}
+	}
+
+	mapTests := []struct {
+		input   any
+		want    any
+		wantErr error
+	}{
+		{
+			input: map[string]int{"a": 1, "b": 2, "c": 3},
+			want:  []string{"a=1", "b=2", "c=3"},
+		}, {
+			input: map[int]string{1: "a", 2: "b", 3: "c"},
+			want:  []string{"1=a", "2=b", "3=c"},
+		},
+	}
+	for _, tc := range mapTests {
+		t.Run("map", func(t *testing.T) {
+			have, haveErr := Marshal(tc.input)
+			if have != "" {
+				parts := strings.Split(have.String(), DefaultItemsSeparator)
+				assert.ElementsMatch(t, tc.want, parts)
+			} else {
+				assert.Equal(t, tc.want, have)
+			}
+
+			if tc.wantErr != nil {
+				assert.ErrorIs(t, haveErr, tc.wantErr)
+			} else {
+				assert.NoError(t, haveErr)
+			}
+		})
 	}
 }
 
