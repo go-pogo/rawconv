@@ -7,6 +7,7 @@ package rawconv
 import (
 	"github.com/go-pogo/errors"
 	"reflect"
+	"strings"
 )
 
 const (
@@ -24,14 +25,16 @@ const (
 // If v is not a supported type an UnsupportedTypeError is returned.
 // By default, the following types are supported:
 // - encoding.TextUnmarshaler
-// - time.Duration
-// - url.URL
 // - string
 // - bool
 // - int, int8, int16, int32, int64
 // - uint, uint8, uint16, uint32, uint64
 // - float32, float64
 // - complex64, complex128
+// - array, slice
+// - map
+// - time.Duration
+// - url.URL
 // Use RegisterUnmarshalFunc to add additional (custom) types.
 func Unmarshal(val Value, v any) error {
 	rv := reflect.ValueOf(v)
@@ -39,7 +42,7 @@ func Unmarshal(val Value, v any) error {
 		return errors.WithKind(ErrPointerExpected, ImplementationError)
 	}
 
-	return unmarshaler.unmarshal(val, rv)
+	return unmarshaler.unmarshal(val, rv, false)
 }
 
 // UnmarshalFunc is a function which can unmarshal a Value to any type.
@@ -58,6 +61,7 @@ var unmarshaler Unmarshaler
 // registered with Register. It wil always fallback to the global Unmarshaler
 // when a type is not registered.
 type Unmarshaler struct {
+	Options
 	register register[UnmarshalFunc]
 }
 
@@ -86,10 +90,10 @@ func (u *Unmarshaler) Unmarshal(val Value, v reflect.Value) error {
 	if v.Kind() != reflect.Ptr && !v.CanSet() {
 		return errors.New(ErrUnableToSet)
 	}
-	return u.unmarshal(val, v)
+	return u.unmarshal(val, v, false)
 }
 
-func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
+func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error {
 	if fn := u.Func(dest.Type()); fn != nil {
 		return fn.Exec(v, dest)
 	}
@@ -138,9 +142,51 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value) error {
 		x, err := complexSize(v, dest.Type().Bits())
 		dest.SetComplex(x)
 		return err
-	}
 
-	return errors.WithStack(&UnsupportedTypeError{Type: ot})
+	case reflect.Slice:
+		parts := split(v.String(), u.itemSeparator())
+		values := reflect.MakeSlice(dest.Type(), 0, len(parts))
+		valTyp := dest.Type().Elem()
+
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			val := reflect.New(valTyp).Elem()
+			if err = u.unmarshal(Value(part), val, true); err != nil {
+				return err
+			}
+			values = reflect.Append(values, val)
+		}
+
+		dest.Set(values)
+		return nil
+
+	case reflect.Map:
+		parts := split(v.String(), u.itemSeparator())
+		if dest.IsNil() {
+			dest.Set(reflect.MakeMapWithSize(dest.Type(), len(parts)))
+		}
+
+		keyTyp := dest.Type().Key()
+		valTyp := dest.Type().Elem()
+
+		for _, part := range parts {
+			kv := strings.SplitN(part, u.keyValueSeparator(), 2)
+			key := reflect.New(keyTyp).Elem()
+			if err = u.unmarshal(Value(kv[0]), key, true); err != nil {
+				return err
+			}
+			val := reflect.New(valTyp).Elem()
+			if err = u.unmarshal(Value(kv[1]), val, true); err != nil {
+				return err
+			}
+
+			dest.SetMapIndex(key, val)
+		}
+		return nil
+
+	default:
+		return errors.WithStack(&UnsupportedTypeError{Type: ot})
+	}
 }
 
 // Exec executes the UnmarshalFunc by taking the address of dest, and passing it
@@ -189,4 +235,8 @@ func value(rv reflect.Value) (reflect.Value, error) {
 		rv.Set(reflect.New(rv.Type().Elem()))
 	}
 	return rv, nil
+}
+
+func split(str, sep string) []string {
+	return strings.Split(str, sep)
 }

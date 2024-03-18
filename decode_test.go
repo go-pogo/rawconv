@@ -61,17 +61,13 @@ func TestUnmarshaler_Unmarshal(t *testing.T) {
 			want:    nilChan,
 			wantErr: &UnsupportedTypeError{Type: reflect.TypeOf(&nilChan)},
 		}},
-
-		"string": {
-			{
-				input: "some value",
-				want:  "some value",
-			},
-			{
-				input: Value("foobar"),
-				want:  ptr("foobar"),
-			},
-		},
+		"string": {{
+			input: "some value",
+			want:  "some value",
+		}, {
+			input: Value("foobar"),
+			want:  ptr("foobar"),
+		}},
 		"bool": {{
 			input: "true",
 			want:  true,
@@ -92,36 +88,45 @@ func TestUnmarshaler_Unmarshal(t *testing.T) {
 			input: "3.14+2.72i",
 			want:  complex(3.14, 2.72),
 		}},
-
 		"duration": {{
 			input: "10s",
 			want:  time.Second * 10,
 		}},
-		"time": {
-			{
-				input: "1997-08-29T13:37:00Z",
-				want:  timeVal,
-			},
-			{
-				input: "1997-08-29T13:37:00Z",
-				want:  ptr(timeVal),
-			},
-		},
-
-		"url": {
-			{
-				input: "http://localhost/",
-				want:  *urlPtr,
-			},
-			{
-				input: "http://localhost/",
-				want:  urlPtr,
-			},
-		},
-
+		"time": {{
+			input: "1997-08-29T13:37:00Z",
+			want:  timeVal,
+		}, {
+			input: "1997-08-29T13:37:00Z",
+			want:  ptr(timeVal),
+		}},
+		"url": {{
+			input: "http://localhost/",
+			want:  *urlPtr,
+		}, {
+			input: "http://localhost/",
+			want:  urlPtr,
+		}},
 		"ip": {{
 			input: "192.168.1.1",
 			want:  net.IPv4(192, 168, 1, 1),
+		}},
+		//"array": {{
+		//	input: "1,2,3",
+		//	want:  [3]int{1, 2, 3},
+		//}, {
+		//	input: "1,2,3",
+		//	want:  [3]string{"1", "2", "3"},
+		//}},
+		"slice": {{
+			input: "http://localhost/",
+			want:  []url.URL{*urlPtr},
+		}, {
+			input: "1.2, 3.14, 5.6",
+			want:  []float64{1.2, 3.14, 5.6},
+		}},
+		"map": {{
+			input: "key1=value1,key2=value2",
+			want:  map[string]string{"key1": "value1", "key2": "value2"},
 		}},
 	}
 
