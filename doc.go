@@ -8,8 +8,8 @@ of any (custom) data type in Go.
 
 # Basic conversions
 
-Basic conversions are done using the strconv package and are implemented as
-methods on the Value type. The following conversions are supported:
+Basic conversions are done using the strconv package. The following conversions
+are supported by default:
 - string
 - bool
 - int, int8, int16, int32, int64
@@ -18,12 +18,18 @@ methods on the Value type. The following conversions are supported:
 - complex64, complex128
 - time.Duration
 - url.URL
+These types are also implemented as methods on the Value type.
+
+# Array, slice and map conversions
 
 # Custom types
 
-Conversions for global custom types are done by registering a MarshalFunc and/or
-UnmarshalFunc using the RegisterMarshalFunc and RegisterUnmarshalFunc functions.
-It is also possible to use Marshaler and/or Unmarshaler if you do not want to
-expose the MarshalFunc or UnmarshalFunc implementations.
+Custom types are supported in two ways; by implementing the
+encoding.TextUnmarshaler and/or encoding.TextMarshaler interfaces, or by
+registering a MarshalFunc with RegisterMarshalFunc and/or an UnmarshalFunc with
+RegisterUnmarshalFunc.
+If you do not wish to globally expose your MarshalFunc or UnmarshalFunc
+implementations, it is possible to register them to a new Marshaler and/or
+Unmarshaler and use those instances in your application instead.
 */
 package rawconv
