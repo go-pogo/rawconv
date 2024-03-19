@@ -1,0 +1,13 @@
+# https://taskfile.dev/installation/
+version: '3'
+
+tasks:
+  ci:lint:
+    desc: Run linter via act
+    cmds:
+      - act -q -j lint
+
+  ci:test:
+    desc: Run tests via act
+    cmds:
+      - act -q -j test
