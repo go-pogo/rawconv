@@ -13,8 +13,8 @@
         <ENTRY IS_ENABLED="true" PARSER="runconfig" IS_EXECUTABLE="false" />
       </ENTRIES>
     </EXTENSION>
-    <kind value="DIRECTORY" />
-    <package value="./..." />
+    <kind value="PACKAGE" />
+    <package value="github.com/go-pogo/rawconv" />
     <directory value="$PROJECT_DIR$" />
     <filePath value="$PROJECT_DIR$" />
     <framework value="gotest" />
