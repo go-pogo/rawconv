@@ -22,7 +22,7 @@ rawconv
 [doc-url]: https://pkg.go.dev/github.com/go-pogo/rawconv
 
 
-Package `rawconv` implements conversions to and from raw string representations 
+Package `rawconv` implements conversions to and from raw string representations
 of any (custom) data types in Go.
 
 ```sh
@@ -33,25 +33,49 @@ go get github.com/go-pogo/rawconv
 import "github.com/go-pogo/rawconv"
 ```
 
-## Basic conversions
+## Key features
 
-Basic conversions are done using the `strconv` package and are implemented as
-methods on the `Value` type. The following conversions are supported:
-- `string`
-- `bool`
-- `int`, `int8`, `int16`, `int32`, `int64`
-- `uint`, `uint8`, `uint16`, `uint32`, `uint64`
-- `float32`, `float64`
-- `complex64`, `complex128`
-- `time.Duration`
-- `url.URL`
+- Convert from raw string to out of the box supported types:
+  * `string`
+  * `bool`
+  * `int`, `int8`, `int16`, `int32`, `int64`
+  * `uint`, `uint8`, `uint16`, `uint32`, `uint64`
+  * `float32`, `float64`
+  * `complex64`, `complex128`
+  * `time.Duration`
+  * `url.URL`
+  * `encoding.TextUnmarshaler`
+- Globally add support for your own custom types
+- Or isolate support for your own custom types via `Marshaler` and `Unmarshaler` instances
+
+```go
+var duration time.Duration
+if err := rawconv.Unmarshal("1h2m3s", &duration); err != nil {
+    return fmt.Errorf("invalid duration: %w", err)
+}
+```
+
+## Array, slice and map conversions
+
+Conversions to `array`, `slice` or `map` are done by splitting the raw string. The separator can be set via the 
+`Options` type and defaults to `DefaultItemsSeparator`. For maps there is also a separator for the key-value pairs, 
+which defaults to `DefaultKeyValueSeparator`.
+Values within the `array`, `slice`, or `map` are unmarshaled using the called `Unmarshaler`. This is also done for keys 
+of maps.
+> Nested arrays, slices and maps are not supported.
+
+## Structs
+
+This package does not contain any logic for traversing `struct` types, because the implementation would really depend 
+on the use case. However, it is possible to incorporate this package in your own struct unmarshaling logic.
 
 ## Custom types
 
-Conversions for global custom types are done by registering a `MarshalFunc` and/or
-`UnmarshalFunc` using the `RegisterMarshalFunc` and `RegisterUnmarshalFunc` functions.
-It is also possible to use `Marshaler` and/or `Unmarshaler` if you do not want to
-expose the `MarshalFunc` or `UnmarshalFunc` implementations.
+Custom types are supported in two ways; by implementing the `encoding.TextUnmarshaler` and/or `encoding.TextMarshaler`
+interfaces, or by registering a `MarshalFunc` with `RegisterMarshalFunc` and/or an `UnmarshalFunc` with
+`RegisterUnmarshalFunc`.
+If you do not wish to globally expose your `MarshalFunc` or`UnmarshalFunc` implementations, it is possible to register
+them to a new `Marshaler` or `Unmarshaler` and use those instances in your application instead.
 
 ## Documentation
 
