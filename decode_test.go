@@ -110,23 +110,43 @@ func TestUnmarshaler_Unmarshal(t *testing.T) {
 			input: "192.168.1.1",
 			want:  net.IPv4(192, 168, 1, 1),
 		}},
-		//"array": {{
-		//	input: "1,2,3",
-		//	want:  [3]int{1, 2, 3},
-		//}, {
-		//	input: "1,2,3",
-		//	want:  [3]string{"1", "2", "3"},
-		//}},
+		"array": {{
+			input: "1,2,3",
+			want:  [3]int{1, 2, 3},
+		}, {
+			input: "1,2,3",
+			want:  [3]string{"1", "2", "3"},
+		}, {
+			input:   "1,2,3",
+			want:    [1]int{1},
+			wantErr: ErrArrayTooManyValues,
+		}, {
+			input:   "1,2,3",
+			want:    [1][2]int{},
+			wantErr: ErrUnmarshalNested,
+		}},
 		"slice": {{
 			input: "http://localhost/",
 			want:  []url.URL{*urlPtr},
 		}, {
 			input: "1.2, 3.14, 5.6",
 			want:  []float64{1.2, 3.14, 5.6},
+		}, {
+			input:   "iets",
+			want:    ([][]string)(nil),
+			wantErr: ErrUnmarshalNested,
 		}},
 		"map": {{
 			input: "key1=value1,key2=value2",
 			want:  map[string]string{"key1": "value1", "key2": "value2"},
+		}, {
+			input:   "iets",
+			want:    map[string]map[string]string{},
+			wantErr: ErrMapInvalidFormat,
+		}, {
+			input:   "iets=something",
+			want:    map[string]map[string]string{},
+			wantErr: ErrUnmarshalNested,
 		}},
 	}
 

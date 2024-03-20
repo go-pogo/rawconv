@@ -11,9 +11,12 @@ import (
 )
 
 const (
-	ErrPointerExpected errors.Msg = "expected a non-nil pointer to a value"
-	ErrUnableToSet     errors.Msg = "unable to set value"
-	ErrUnableToAddr    errors.Msg = "unable to addr value"
+	ErrPointerExpected    errors.Msg = "expected a non-nil pointer to a value"
+	ErrUnmarshalNested    errors.Msg = "cannot unmarshal nested array/slice/map"
+	ErrUnableToSet        errors.Msg = "unable to set value"
+	ErrUnableToAddr       errors.Msg = "unable to addr value"
+	ErrArrayTooManyValues errors.Msg = "too many values"
+	ErrMapInvalidFormat   errors.Msg = "invalid map format"
 
 	// ImplementationError indicates the programmer made a mistake implementing
 	// the package and this should be fixed.
@@ -24,7 +27,6 @@ const (
 // If v is nil or not a pointer, Unmarshal returns an ErrPointerExpected error.
 // If v is not a supported type an UnsupportedTypeError is returned.
 // By default, the following types are supported:
-// - encoding.TextUnmarshaler
 // - string
 // - bool
 // - int, int8, int16, int32, int64
@@ -35,6 +37,7 @@ const (
 // - map
 // - time.Duration
 // - url.URL
+// - encoding.TextUnmarshaler
 // Use RegisterUnmarshalFunc to add additional (custom) types.
 func Unmarshal(val Value, v any) error {
 	rv := reflect.ValueOf(v)
@@ -143,24 +146,54 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error 
 		dest.SetComplex(x)
 		return err
 
-	case reflect.Slice:
-		parts := split(v.String(), u.itemSeparator())
-		values := reflect.MakeSlice(dest.Type(), 0, len(parts))
-		valTyp := dest.Type().Elem()
+	case reflect.Array:
+		if nested {
+			return errors.New(ErrUnmarshalNested)
+		}
 
-		for _, part := range parts {
-			part = strings.TrimSpace(part)
-			val := reflect.New(valTyp).Elem()
+		parts := split(v.String(), u.itemSeparator())
+		typ := dest.Type().Elem()
+
+		partsLen, arrayLen := len(parts), dest.Len()
+		for i := 0; i < partsLen && i < arrayLen; i++ {
+			part := strings.TrimSpace(parts[i])
+			val := reflect.New(typ).Elem()
 			if err = u.unmarshal(Value(part), val, true); err != nil {
 				return err
 			}
-			values = reflect.Append(values, val)
+			dest.Index(i).Set(val)
+		}
+		if partsLen > arrayLen {
+			return errors.New(ErrArrayTooManyValues)
+		}
+		return nil
+
+	case reflect.Slice:
+		if nested {
+			return errors.New(ErrUnmarshalNested)
 		}
 
-		dest.Set(values)
+		parts := split(v.String(), u.itemSeparator())
+		slice := reflect.MakeSlice(dest.Type(), 0, len(parts))
+		typ := dest.Type().Elem()
+
+		for _, part := range parts {
+			part = strings.TrimSpace(part)
+			val := reflect.New(typ).Elem()
+			if err = u.unmarshal(Value(part), val, true); err != nil {
+				return err
+			}
+			slice = reflect.Append(slice, val)
+		}
+
+		dest.Set(slice)
 		return nil
 
 	case reflect.Map:
+		if nested {
+			return errors.New(ErrUnmarshalNested)
+		}
+
 		parts := split(v.String(), u.itemSeparator())
 		if dest.IsNil() {
 			dest.Set(reflect.MakeMapWithSize(dest.Type(), len(parts)))
@@ -171,6 +204,10 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error 
 
 		for _, part := range parts {
 			kv := strings.SplitN(part, u.keyValueSeparator(), 2)
+			if len(kv) != 2 {
+				return errors.New(ErrMapInvalidFormat)
+			}
+
 			key := reflect.New(keyTyp).Elem()
 			if err = u.unmarshal(Value(kv[0]), key, true); err != nil {
 				return err

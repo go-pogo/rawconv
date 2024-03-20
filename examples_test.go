@@ -44,6 +44,19 @@ func ExampleUnmarshaler() {
 	// Output: https://example.com
 }
 
+func ExampleUnmarshaler_Unmarshal() {
+	var u Unmarshaler
+	u.ItemsSeparator = ";"
+
+	var list []string
+	if err := u.Unmarshal("foo;bar", reflect.ValueOf(&list)); err != nil {
+		panic(err)
+	}
+
+	fmt.Println(list)
+	// Output: [foo bar]
+}
+
 func ExampleMarshaler() {
 	var m Marshaler
 	target, _ := url.ParseRequestURI("https://example.com")
