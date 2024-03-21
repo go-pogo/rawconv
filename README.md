@@ -22,8 +22,25 @@ rawconv
 [doc-url]: https://pkg.go.dev/github.com/go-pogo/rawconv
 
 
-Package `rawconv` implements conversions to and from raw string representations
-of any (custom) data types in Go.
+Package `rawconv` implements conversions to and from raw string representations of any (custom) data types in Go.
+
+Included features are:
+- Convert from raw string to out of the box supported types, and vice versa:
+    * `string`, `rune`
+    * `bool`
+    * `int`, `int8`, `int16`, `int32`, `int64`
+    * `uint`, `uint8`, `uint16`, `uint32`, `uint64`
+    * `float32`, `float64`
+    * `complex64`, `complex128`
+    * `array`, `slice`
+    * `map`
+    * `time.Duration`
+    * `url.URL`
+    * `encoding.TextUnmarshaler`, `encoding.TextMarshaler`
+- Globally add support for your own custom types
+- Or isolate support for your own custom types via `Marshaler` and `Unmarshaler` instances
+
+<hr>
 
 ```sh
 go get github.com/go-pogo/rawconv
@@ -33,25 +50,27 @@ go get github.com/go-pogo/rawconv
 import "github.com/go-pogo/rawconv"
 ```
 
-## Key features
+## Usage
 
-- Convert from raw string to out of the box supported types:
-  * `string`
-  * `bool`
-  * `int`, `int8`, `int16`, `int32`, `int64`
-  * `uint`, `uint8`, `uint16`, `uint32`, `uint64`
-  * `float32`, `float64`
-  * `complex64`, `complex128`
-  * `time.Duration`
-  * `url.URL`
-  * `encoding.TextUnmarshaler`
-- Globally add support for your own custom types
-- Or isolate support for your own custom types via `Marshaler` and `Unmarshaler` instances
-
+Below example demonstrates how to unmarshal a raw `string` into a
+`time.Duration` type using `Unmarshal`.
 ```go
-var duration time.Duration
-if err := rawconv.Unmarshal("1h2m3s", &duration); err != nil {
-    return fmt.Errorf("invalid duration: %w", err)
+package main
+
+import (
+    "fmt"
+    "github.com/go-pogo/rawconv"
+    "time"
+)
+
+func main() {
+    var duration time.Duration
+    if err := rawconv.Unmarshal("1h2m3s", &duration); err != nil {
+        panic(err)
+    }
+
+    fmt.Println(duration)
+    // Output: 1h2m3s
 }
 ```
 
@@ -76,6 +95,40 @@ interfaces, or by registering a `MarshalFunc` with `RegisterMarshalFunc` and/or 
 `RegisterUnmarshalFunc`.
 If you do not wish to globally expose your `MarshalFunc` or`UnmarshalFunc` implementations, it is possible to register
 them to a new `Marshaler` or `Unmarshaler` and use those instances in your application instead.
+
+```go
+package main
+
+import (
+    "github.com/davecgh/go-spew/spew"
+    "github.com/go-pogo/rawconv"
+    "reflect"
+)
+
+func main() {
+    type myType struct {
+        something string
+    }
+
+    var u rawconv.Unmarshaler
+    u.Register(reflect.TypeOf(myType{}), func(val rawconv.Value, dest any) error {
+        mt := dest.(*myType)
+        mt.something = val.String()
+        return nil
+    })
+
+    var target myType
+    if err := u.Unmarshal("some value", reflect.ValueOf(&target)); err != nil {
+        panic(err)
+    }
+
+    spew.Dump(target)
+    // Output:
+    // (rawconv.myType) {
+    //  something: (string) (len=10) "some value"
+    // }
+}
+```
 
 ## Documentation
 
