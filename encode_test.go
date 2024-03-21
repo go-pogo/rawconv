@@ -36,6 +36,10 @@ func TestMarshal(t *testing.T) {
 		}, {
 			input: (*string)(nil),
 		}},
+		"rune": {{
+			input: 'a',
+			want:  Value("a"),
+		}},
 		"bool": {{
 			input: true,
 			want:  Value("true"),

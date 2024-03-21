@@ -65,8 +65,16 @@ func TestUnmarshaler_Unmarshal(t *testing.T) {
 			input: "some value",
 			want:  "some value",
 		}, {
-			input: Value("foobar"),
+			input: "foobar",
 			want:  ptr("foobar"),
+		}},
+		"rune": {{
+			input: "a",
+			want:  'a',
+		}, {
+			input:   "abc",
+			want:    'a',
+			wantErr: ErrRuneTooManyChars,
 		}},
 		"bool": {{
 			input: "true",

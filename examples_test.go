@@ -12,6 +12,8 @@ import (
 	"time"
 )
 
+// Below example demonstrates how to unmarshal a raw string into a
+// time.Duration type using Unmarshal.
 func ExampleUnmarshal() {
 	var duration time.Duration
 	if err := Unmarshal("1h2m3s", &duration); err != nil {

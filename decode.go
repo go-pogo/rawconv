@@ -15,6 +15,7 @@ const (
 	ErrUnmarshalNested    errors.Msg = "cannot unmarshal nested array/slice/map"
 	ErrUnableToSet        errors.Msg = "unable to set value"
 	ErrUnableToAddr       errors.Msg = "unable to addr value"
+	ErrRuneTooManyChars   errors.Msg = "too many characters"
 	ErrArrayTooManyValues errors.Msg = "too many values"
 	ErrMapInvalidFormat   errors.Msg = "invalid map format"
 

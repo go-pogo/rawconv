@@ -30,6 +30,10 @@ func init() {
 	RegisterMarshalFunc(textMarshaler, marshalText)
 
 	// common types
+	rune := reflect.TypeOf(rune(0))
+	RegisterUnmarshalFunc(rune, unmarshalRune)
+	RegisterMarshalFunc(rune, marshalRune)
+
 	timeDuration := reflect.TypeOf(time.Nanosecond)
 	RegisterUnmarshalFunc(timeDuration, unmarshalDuration)
 	RegisterMarshalFunc(timeDuration, marshalDuration)

@@ -18,6 +18,7 @@ func TestValue(t *testing.T) {
 	types := map[string][]string{
 		"empty":    {""},
 		"string":   {"some value", "another string"},
+		"rune":     {"a", "b", "c"},
 		"bool":     {"true", "false"},
 		"int":      {"100", "+33", "-349"},
 		"float":    {"1.1", "0.59999", "22.564856"},
@@ -34,6 +35,21 @@ func TestValue(t *testing.T) {
 			func(s string) (any, error) {
 				var v string
 				Value(s).StringVar(&v)
+				return v, nil
+			},
+		},
+		"Rune": {
+			func(s string) (any, error) {
+				var r rune
+				if s != "" {
+					r = rune(s[0])
+				}
+				return r, nil
+			},
+			func(s string) (any, error) { return Value(s).Rune(), nil },
+			func(s string) (any, error) {
+				var v rune
+				Value(s).RuneVar(&v)
 				return v, nil
 			},
 		},
