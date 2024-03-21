@@ -81,6 +81,29 @@ Conversions to `array`, `slice` or `map` are done by splitting the raw string. T
 which defaults to `DefaultKeyValueSeparator`.
 Values within the `array`, `slice`, or `map` are unmarshaled using the called `Unmarshaler`. This is also done for keys 
 of maps.
+
+```go
+package main
+
+import (
+    "fmt"
+    "github.com/go-pogo/rawconv"
+    "reflect"
+)
+
+func main() {
+	var u rawconv.Unmarshaler
+	u.ItemsSeparator = ";"
+
+	var list []string
+	if err := u.Unmarshal("foo;bar", reflect.ValueOf(&list)); err != nil {
+		panic(err)
+	}
+
+	fmt.Println(list)
+	// Output: [foo bar]
+}
+```
 > Nested arrays, slices and maps are not supported.
 
 ## Structs
