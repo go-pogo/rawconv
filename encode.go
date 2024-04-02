@@ -16,17 +16,18 @@ const ErrMarshalNested errors.Msg = "cannot marshal nested array/slice/map"
 // Marshal formats the value pointed to by v to a raw string Value.
 // If v is not a supported type an UnsupportedTypeError is returned.
 // By default, the following types are supported:
-// - encoding.TextMarshaler
-// - string
-// - bool
-// - int, int8, int16, int32, int64
-// - uint, uint8, uint16, uint32, uint64
-// - float32, float64
-// - complex64, complex128
-// - array, slice
-// - map
-// - time.Duration
-// - url.URL
+//   - encoding.TextMarshaler
+//   - string
+//   - bool
+//   - int, int8, int16, int32, int64
+//   - uint, uint8, uint16, uint32, uint64
+//   - float32, float64
+//   - complex64, complex128
+//   - array, slice
+//   - map
+//   - time.Duration
+//   - url.URL
+//
 // Use RegisterMarshalFunc to add additional (custom) types.
 func Marshal(v any) (Value, error) {
 	return marshaler.Marshal(reflect.ValueOf(v))
