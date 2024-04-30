@@ -111,10 +111,14 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error 
 
 	var err error
 	for dest.Kind() == reflect.Ptr {
-		// take the value dest points to and make sure it is not nil
-		if dest, err = value(dest.Elem()); err != nil {
-			return err
+		if dest.IsNil() {
+			if !dest.CanSet() {
+				return errors.New(ErrUnableToSet)
+			}
+
+			dest.Set(reflect.New(dest.Type().Elem()))
 		}
+		dest = dest.Elem()
 	}
 
 	// handle aliases of primitive types
