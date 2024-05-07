@@ -1,9 +1,13 @@
 name: Lint
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+    paths:
+      - '**.go'
   pull_request:
-    branches: [main]
+    branches: [ main ]
+    paths:
+      - '**.go'
 
 jobs:
   lint:
@@ -15,7 +19,7 @@ jobs:
           go-version: stable
 
       - name: Run linter
-        uses: golangci/golangci-lint-action@v5
+        uses: golangci/golangci-lint-action@v6
         with:
           version: latest
 

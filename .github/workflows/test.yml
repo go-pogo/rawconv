@@ -1,9 +1,21 @@
 name: Test
 on:
   push:
-    branches: [main]
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.run/**'
+      - '.editorconfig'
+      - '*ignore'
+      - 'Taskfile.*'
   pull_request:
-    branches: [main]
+    branches: [ main ]
+    paths-ignore:
+      - '**.md'
+      - '.run/**'
+      - '.editorconfig'
+      - '*ignore'
+      - 'Taskfile.*'
 
 jobs:
   test:
@@ -13,7 +25,6 @@ jobs:
         platform: [ubuntu-latest, macos-latest, windows-latest]
 
     runs-on: ${{ matrix.platform }}
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
