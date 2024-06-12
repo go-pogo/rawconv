@@ -95,5 +95,8 @@ func (v Value) Uint64Var(p *uint64) (err error) {
 
 func uintSize(v Value, bitSize int) (uint64, error) {
 	x, err := strconv.ParseUint(v.String(), 0, bitSize)
-	return x, errors.WithKind(err, errKind(err))
+	if kind := errKind(err); kind != nil {
+		return x, errors.Wrap(err, kind)
+	}
+	return x, errors.WithStack(err)
 }

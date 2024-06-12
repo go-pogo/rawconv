@@ -12,7 +12,7 @@ import (
 // Duration tries to parse Value as a time.Duration using time.ParseDuration.
 func (v Value) Duration() (time.Duration, error) {
 	x, err := time.ParseDuration(v.String())
-	return x, errors.WithKind(err, ParseError)
+	return x, errors.Wrap(err, ErrParseFailure)
 }
 
 // DurationVar sets the value p points to using Duration.

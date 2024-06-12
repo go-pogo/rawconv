@@ -18,10 +18,7 @@ const (
 	ErrRuneTooManyChars   errors.Msg = "too many characters"
 	ErrArrayTooManyValues errors.Msg = "too many values"
 	ErrMapInvalidFormat   errors.Msg = "invalid map format"
-
-	// ImplementationError indicates the programmer made a mistake implementing
-	// the package and this should be fixed.
-	ImplementationError errors.Kind = "implementation error"
+	ErrUnmarshalFuncExec  errors.Msg = "error while executing UnmarshalFunc"
 )
 
 // Unmarshal parses Value and stores the result in the value pointed to by v.
@@ -44,7 +41,7 @@ const (
 func Unmarshal(val Value, v any) error {
 	rv := reflect.ValueOf(v)
 	if rv.Kind() != reflect.Ptr || rv.IsNil() {
-		return errors.WithKind(ErrPointerExpected, ImplementationError)
+		return errors.New(ErrPointerExpected)
 	}
 
 	return unmarshaler.unmarshal(val, rv, false)
@@ -235,11 +232,11 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error 
 // Exec executes the UnmarshalFunc by taking the address of dest, and passing it
 // as an interface to UnmarshalFunc. It will return an error when the address of
 // reflect.Value dest cannot be taken, or when it is unable to set.
-// Any error returned by UnmarshalFunc is wrapped with ParseError.
+// Any error returned by UnmarshalFunc is wrapped with ErrParseFailure.
 func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
 	if dest.Kind() != reflect.Ptr {
 		if !dest.CanAddr() {
-			return errors.WithKind(ErrUnableToAddr, ImplementationError)
+			return errors.New(ErrUnableToAddr)
 		}
 		return fn.exec(v, dest.Addr())
 	}
@@ -259,11 +256,7 @@ func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
 
 func (fn UnmarshalFunc) exec(val Value, dest reflect.Value) error {
 	if err := fn(val, dest.Interface()); err != nil {
-		//goland:noinspection GoDirectComparisonOfErrors
-		if errors.GetKind(err) == errors.UnknownKind {
-			return errors.WithKind(err, ParseError)
-		}
-		return err
+		return errors.Wrap(err, ErrUnmarshalFuncExec)
 	}
 	return nil
 }

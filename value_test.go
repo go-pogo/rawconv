@@ -263,9 +263,10 @@ func TestValue(t *testing.T) {
 					assert.Exactly(t, wantErr, errors.Unwrap(haveErr))
 
 					if wantErr != nil {
-						k := errors.GetKind(haveErr)
-						//goland:noinspection GoDirectComparisonOfErrors
-						assert.True(t, k == ParseError || k == ValidationError, "Kind should match ParseError or ValidationError")
+						assert.True(t,
+							errors.Is(haveErr, ErrParseFailure) || errors.Is(haveErr, ErrValidationFailure),
+							"err should be wrapped with either ErrParseFailure or ErrValidationFailure",
+						)
 					}
 				})
 			}

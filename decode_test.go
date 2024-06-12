@@ -13,11 +13,6 @@ import (
 	"time"
 )
 
-func assertInvalidActionError(t *testing.T, err, target error) {
-	assert.ErrorIs(t, err, target)
-	assert.ErrorIs(t, err, ImplementationError)
-}
-
 func ptr[T any](v T) *T { return &v }
 
 func TestUnmarshal(t *testing.T) {
@@ -29,7 +24,7 @@ func TestUnmarshal(t *testing.T) {
 	for name, val := range tests {
 		t.Run(name, func(t *testing.T) {
 			err := Unmarshal("", val)
-			assertInvalidActionError(t, err, ErrPointerExpected)
+			assert.ErrorIs(t, err, ErrPointerExpected)
 		})
 	}
 }
@@ -189,7 +184,7 @@ func TestParseFunc_Exec(t *testing.T) {
 	t.Parallel()
 	t.Run("value value", func(t *testing.T) {
 		err := parseFunc.Exec("10s", reflect.Zero(durationType))
-		assertInvalidActionError(t, err, ErrUnableToAddr)
+		assert.ErrorIs(t, err, ErrUnableToAddr)
 	})
 	t.Run("nil pointer", func(t *testing.T) {
 		var d *time.Duration

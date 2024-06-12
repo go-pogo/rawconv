@@ -95,5 +95,8 @@ func (v Value) Int64Var(p *int64) (err error) {
 
 func intSize(v Value, bitSize int) (int64, error) {
 	x, err := strconv.ParseInt(v.String(), 0, bitSize)
-	return x, errors.WithKind(err, errKind(err))
+	if kind := errKind(err); kind != nil {
+		return x, errors.Wrap(err, kind)
+	}
+	return x, errors.WithStack(err)
 }

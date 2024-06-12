@@ -19,7 +19,10 @@ func ValueFromBool(v bool) Value {
 // Any other value returns an error.
 func (v Value) Bool() (bool, error) {
 	x, err := strconv.ParseBool(string(v))
-	return x, errors.WithKind(err, errKind(err))
+	if kind := errKind(err); kind != nil {
+		return x, errors.Wrap(err, kind)
+	}
+	return x, errors.WithStack(err)
 }
 
 // BoolVar sets the value p points to using Bool.

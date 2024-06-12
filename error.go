@@ -25,18 +25,18 @@ func (e *UnsupportedTypeError) Error() string {
 }
 
 const (
-	ParseError      errors.Kind = "parse error"
-	ValidationError errors.Kind = "validation error"
+	ErrParseFailure      errors.Msg = "failed to parse"
+	ErrValidationFailure errors.Msg = "failed to validate"
 )
 
-func errKind(err error) errors.Kind {
+func errKind(err error) error {
 	var numErr *strconv.NumError
 	if errors.As(err, &numErr) {
 		if errors.Is(numErr.Err, strconv.ErrRange) {
-			return ValidationError
+			return ErrValidationFailure
 		} else {
-			return ParseError
+			return ErrParseFailure
 		}
 	}
-	return errors.UnknownKind
+	return nil
 }

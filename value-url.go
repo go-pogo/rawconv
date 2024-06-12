@@ -13,7 +13,7 @@ import (
 func (v Value) Url() (*url.URL, error) {
 	x, err := url.ParseRequestURI(v.String())
 	if err != nil {
-		return nil, errors.WithKind(err, ParseError)
+		return nil, errors.Wrap(err, ErrParseFailure)
 	}
 	return x, nil
 }
