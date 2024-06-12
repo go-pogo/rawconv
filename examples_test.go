@@ -6,10 +6,11 @@ package rawconv
 
 import (
 	"fmt"
-	"github.com/davecgh/go-spew/spew"
 	"net/url"
 	"reflect"
 	"time"
+
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Below example demonstrates how to unmarshal a raw string into a

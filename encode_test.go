@@ -5,14 +5,15 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
-	"github.com/stretchr/testify/assert"
 	"net"
 	"net/url"
 	"reflect"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/go-pogo/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestMarshal(t *testing.T) {

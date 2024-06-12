@@ -5,10 +5,11 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/go-pogo/errors"
 )
 
 const ErrMarshalNested errors.Msg = "cannot marshal nested array/slice/map"

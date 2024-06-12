@@ -5,8 +5,9 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
 	"strconv"
+
+	"github.com/go-pogo/errors"
 )
 
 // ValueFromComplex64 encodes v to a Value using strconv.FormatComplex.

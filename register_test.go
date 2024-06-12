@@ -5,12 +5,13 @@
 package rawconv
 
 import (
-	"github.com/stretchr/testify/assert"
 	"net"
 	"net/url"
 	"reflect"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetUnmarshalFunc(t *testing.T) {

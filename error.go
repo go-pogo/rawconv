@@ -5,9 +5,10 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
 	"reflect"
 	"strconv"
+
+	"github.com/go-pogo/errors"
 )
 
 type UnsupportedTypeError struct {

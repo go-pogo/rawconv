@@ -5,8 +5,9 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
 	"time"
+
+	"github.com/go-pogo/errors"
 )
 
 // Duration tries to parse Value as a time.Duration using time.ParseDuration.

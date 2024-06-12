@@ -5,13 +5,14 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
-	"github.com/stretchr/testify/assert"
 	"math"
 	"net/url"
 	"strconv"
 	"testing"
 	"time"
+
+	"github.com/go-pogo/errors"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValue(t *testing.T) {

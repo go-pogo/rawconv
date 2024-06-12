@@ -4,7 +4,9 @@
 
 package rawconv
 
-import "github.com/go-pogo/errors"
+import (
+	"github.com/go-pogo/errors"
+)
 
 // Rune returns the first rune of Value.
 func (v Value) Rune() rune {

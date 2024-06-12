@@ -5,8 +5,9 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
 	"strconv"
+
+	"github.com/go-pogo/errors"
 )
 
 // ValueFromFloat32 encodes v to a Value using strconv.FormatFloat.

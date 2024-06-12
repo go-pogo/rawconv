@@ -5,8 +5,9 @@
 package rawconv
 
 import (
-	"github.com/go-pogo/errors"
 	"net/url"
+
+	"github.com/go-pogo/errors"
 )
 
 // Url tries to parse Value as an *url.URL using url.ParseRequestURI.
