@@ -25,6 +25,7 @@ rawconv
 Package `rawconv` implements conversions to and from raw string representations of any (custom) data types in Go.
 
 Included features are:
+
 - Convert from raw string to out of the box supported types, and vice versa:
     * `string`, `rune`
     * `bool`
@@ -52,8 +53,8 @@ import "github.com/go-pogo/rawconv"
 
 ## Usage
 
-Below example demonstrates how to unmarshal a raw `string` into a
-`time.Duration` type using `Unmarshal`.
+Below example demonstrates how to unmarshal a raw `string` into a `time.Duration` type using `Unmarshal`.
+
 ```go
 package main
 
@@ -74,12 +75,12 @@ func main() {
 }
 ```
 
-## Array, slice and map conversions
+### Array, slice and map conversions
 
-Conversions to `array`, `slice` or `map` are done by splitting the raw string. The separator can be set via the 
-`Options` type and defaults to `DefaultItemsSeparator`. For maps there is also a separator for the key-value pairs, 
+Conversions to `array`, `slice` or `map` are done by splitting the raw string. The separator can be set via the
+`Options` type and defaults to `DefaultItemsSeparator`. For maps there is also a separator for the key-value pairs,
 which defaults to `DefaultKeyValueSeparator`.
-Values within the `array`, `slice`, or `map` are unmarshaled using the called `Unmarshaler`. This is also done for keys 
+Values within the `array`, `slice`, or `map` are unmarshaled using the called `Unmarshaler`. This is also done for keys
 of maps.
 
 ```go
@@ -92,26 +93,27 @@ import (
 )
 
 func main() {
-	var u rawconv.Unmarshaler
-	u.ItemsSeparator = ";"
+    var u rawconv.Unmarshaler
+    u.ItemsSeparator = ";"
 
-	var list []string
-	if err := u.Unmarshal("foo;bar", reflect.ValueOf(&list)); err != nil {
-		panic(err)
-	}
+    var list []string
+    if err := u.Unmarshal("foo;bar", reflect.ValueOf(&list)); err != nil {
+        panic(err)
+    }
 
-	fmt.Println(list)
-	// Output: [foo bar]
+    fmt.Println(list)
+    // Output: [foo bar]
 }
 ```
+
 > Nested arrays, slices and maps are not supported.
 
-## Structs
+### Structs
 
-This package does not contain any logic for traversing `struct` types, because the implementation would really depend 
+This package does not contain any logic for traversing `struct` types, because the implementation would really depend
 on the use case. However, it is possible to incorporate this package in your own struct unmarshaling logic.
 
-## Custom types
+### Custom types
 
 Custom types are supported in two ways; by implementing the `encoding.TextUnmarshaler` and/or `encoding.TextMarshaler`
 interfaces, or by registering a `MarshalFunc` with `RegisterMarshalFunc` and/or an `UnmarshalFunc` with
