@@ -165,6 +165,6 @@ Additional detailed documentation is available at [pkg.go.dev][doc-url]
 
 ## License
 
-Copyright © 2022-2024 [Roel Schut](https://roelschut.nl). All rights reserved.
+Copyright © 2022-2025 [Roel Schut](https://roelschut.nl). All rights reserved.
 
 This project is governed by a BSD-style license that can be found in the [LICENSE](LICENSE) file.
