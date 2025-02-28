@@ -60,8 +60,9 @@ package main
 
 import (
     "fmt"
-    "github.com/go-pogo/rawconv"
     "time"
+    
+    "github.com/go-pogo/rawconv"
 )
 
 func main() {
@@ -88,8 +89,9 @@ package main
 
 import (
     "fmt"
-    "github.com/go-pogo/rawconv"
     "reflect"
+    
+    "github.com/go-pogo/rawconv"
 )
 
 func main() {
@@ -125,9 +127,10 @@ them to a new `Marshaler` or `Unmarshaler` and use those instances in your appli
 package main
 
 import (
+    "reflect"
+    
     "github.com/davecgh/go-spew/spew"
     "github.com/go-pogo/rawconv"
-    "reflect"
 )
 
 func main() {
