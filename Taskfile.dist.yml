@@ -5,9 +5,9 @@ tasks:
   ci:lint:
     desc: Run linter via act
     cmds:
-      - act -q -j lint
+      - act -j lint
 
   ci:test:
     desc: Run tests via act
     cmds:
-      - act -q -j test
+      - act -j test
