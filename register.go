@@ -25,14 +25,15 @@ func RegisterMarshalFunc(typ reflect.Type, fn MarshalFunc) {
 
 func init() {
 	// interfaces
+	textUnmarshaler := reflect.TypeOf((*encoding.TextUnmarshaler)(nil)).Elem()
+	RegisterUnmarshalFunc(textUnmarshaler, unmarshalText)
 	textMarshaler := reflect.TypeOf((*encoding.TextMarshaler)(nil)).Elem()
-	RegisterUnmarshalFunc(textMarshaler, unmarshalText)
 	RegisterMarshalFunc(textMarshaler, marshalText)
 
 	// common types
-	rune := reflect.TypeOf(rune(0))
-	RegisterUnmarshalFunc(rune, unmarshalRune)
-	RegisterMarshalFunc(rune, marshalRune)
+	runeType := reflect.TypeOf(rune(0))
+	RegisterUnmarshalFunc(runeType, unmarshalRune)
+	RegisterMarshalFunc(runeType, marshalRune)
 
 	timeDuration := reflect.TypeOf(time.Nanosecond)
 	RegisterUnmarshalFunc(timeDuration, unmarshalDuration)
