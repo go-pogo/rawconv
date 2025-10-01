@@ -22,7 +22,7 @@ rawconv
 [doc-url]: https://pkg.go.dev/github.com/go-pogo/rawconv
 
 
-Package `rawconv` implements conversions to and from raw string representations of any (custom) data types in Go.
+Package `rawconv` implements conversions to and from raw string representations of any (custom) data type in Go.
 
 Included features are:
 
@@ -108,7 +108,7 @@ func main() {
 }
 ```
 
-> Nested arrays, slices and maps are not supported.
+> Nested arrays are currently not supported.
 
 ### Structs
 
