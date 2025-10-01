@@ -31,7 +31,7 @@ DefaultKeyValueSeparator.
 Values within the array, slice, or map are unmarshaled using the called
 Unmarshaler. This is also done for keys of maps.
 
-> Nested arrays, slices and maps are not supported.
+> Nested arrays are currently not supported.
 
 # Structs
 
