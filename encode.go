@@ -82,7 +82,7 @@ func (m *Marshaler) marshal(val reflect.Value, nested bool) (string, error) {
 	}
 
 	ot := val.Type()
-	for val.Kind() == reflect.Ptr {
+	for val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return "", nil
 		}
@@ -172,7 +172,7 @@ func (fn MarshalFunc) Exec(val reflect.Value) (Value, error) {
 }
 
 func (fn MarshalFunc) exec(val reflect.Value) (string, error) {
-	for val.Kind() == reflect.Ptr {
+	for val.Kind() == reflect.Pointer {
 		if val.IsNil() {
 			return "", nil
 		}

@@ -98,7 +98,7 @@ func (r *register[T]) find(typ reflect.Type) T {
 		return fn
 	}
 
-	if typ.Kind() != reflect.Ptr {
+	if typ.Kind() != reflect.Pointer {
 		// check if the type is registered as a pointer
 		return r.getFromImpl(reflect.New(typ).Type())
 	}
