@@ -20,7 +20,7 @@ func ValueFromBool(v bool) Value {
 // Any other value returns an error.
 func (v Value) Bool() (bool, error) {
 	x, err := strconv.ParseBool(string(v))
-	if kind := errKind(err); kind != nil {
+	if kind := errKind(err); kind != "" {
 		return x, errors.Wrap(err, kind)
 	}
 	return x, errors.WithStack(err)

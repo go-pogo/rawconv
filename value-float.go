@@ -45,7 +45,7 @@ func (v Value) Float64Var(p *float64) (err error) {
 
 func floatSize(v Value, bitSize int) (float64, error) {
 	x, err := strconv.ParseFloat(v.String(), bitSize)
-	if kind := errKind(err); kind != nil {
+	if kind := errKind(err); kind != "" {
 		return x, errors.Wrap(err, kind)
 	}
 	return x, errors.WithStack(err)

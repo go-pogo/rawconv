@@ -30,7 +30,7 @@ const (
 	ErrValidationFailure errors.Msg = "failed to validate"
 )
 
-func errKind(err error) error {
+func errKind(err error) errors.Msg {
 	var numErr *strconv.NumError
 	if errors.As(err, &numErr) {
 		if errors.Is(numErr.Err, strconv.ErrRange) {
@@ -39,5 +39,5 @@ func errKind(err error) error {
 			return ErrParseFailure
 		}
 	}
-	return nil
+	return ""
 }

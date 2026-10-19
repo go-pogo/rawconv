@@ -45,7 +45,7 @@ func (v Value) Complex128Var(p *complex128) (err error) {
 
 func complexSize(v Value, bitSize int) (complex128, error) {
 	x, err := strconv.ParseComplex(v.String(), bitSize)
-	if kind := errKind(err); kind != nil {
+	if kind := errKind(err); kind != "" {
 		return x, errors.Wrap(err, kind)
 	}
 	return x, errors.WithStack(err)
