@@ -41,7 +41,7 @@ const (
 // Use RegisterUnmarshalFunc to add additional (custom) types.
 func Unmarshal(val Value, v any) error {
 	rv := reflect.ValueOf(v)
-	if rv.Kind() != reflect.Ptr || rv.IsNil() {
+	if rv.Kind() != reflect.Pointer || rv.IsNil() {
 		return errors.New(ErrPointerExpected)
 	}
 
@@ -90,7 +90,7 @@ func (u *Unmarshaler) Func(typ reflect.Type) UnmarshalFunc {
 // type of v, and sets the parsed value to it. See Unmarshal for additional
 // details.
 func (u *Unmarshaler) Unmarshal(val Value, v reflect.Value) error {
-	if v.Kind() != reflect.Ptr && !v.CanSet() {
+	if v.Kind() != reflect.Pointer && !v.CanSet() {
 		return errors.New(ErrUnableToSet)
 	}
 	return u.unmarshal(val, v, false)
@@ -108,7 +108,7 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error 
 	ot := dest.Type()
 
 	var err error
-	for dest.Kind() == reflect.Ptr {
+	for dest.Kind() == reflect.Pointer {
 		if dest.IsNil() {
 			if !dest.CanSet() {
 				return errors.New(ErrUnableToSet)
@@ -235,7 +235,7 @@ func (u *Unmarshaler) unmarshal(v Value, dest reflect.Value, nested bool) error 
 // reflect.Value dest cannot be taken, or when it is unable to set.
 // Any error returned by UnmarshalFunc is wrapped with ErrParseFailure.
 func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
-	if dest.Kind() != reflect.Ptr {
+	if dest.Kind() != reflect.Pointer {
 		if !dest.CanAddr() {
 			return errors.New(ErrUnableToAddr)
 		}
@@ -246,7 +246,7 @@ func (fn UnmarshalFunc) Exec(v Value, dest reflect.Value) error {
 	if dest, err = value(dest); err != nil {
 		return err
 	}
-	for dest.Elem().Kind() == reflect.Ptr {
+	for dest.Elem().Kind() == reflect.Pointer {
 		if dest, err = value(dest.Elem()); err != nil {
 			return err
 		}
@@ -264,7 +264,7 @@ func (fn UnmarshalFunc) exec(val Value, dest reflect.Value) error {
 
 // value ensures the reflect.Value is not nil.
 func value(rv reflect.Value) (reflect.Value, error) {
-	if rv.Kind() == reflect.Ptr && rv.IsNil() {
+	if rv.Kind() == reflect.Pointer && rv.IsNil() {
 		if !rv.CanSet() {
 			return rv, errors.New(ErrUnableToSet)
 		}
